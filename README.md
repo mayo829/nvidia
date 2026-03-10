@@ -1,5 +1,38 @@
 # Strategic Roadmap for Securing Hybrid Hardware Architecture and Physical Design Roles at NVIDIA
 
+## Table of Contents
+
+1. [The 2026 Semiconductor Landscape and the Rise of Extreme Codesign](#the-2026-semiconductor-landscape-and-the-rise-of-extreme-codesign)
+2. [Deconstructing the Hybrid Architecture and Physical Design Mandate](#deconstructing-the-hybrid-architecture-and-physical-design-mandate)
+    * [Microarchitecture and Register-Transfer Level Implementation](#microarchitecture-and-register-transfer-level-implementation)
+    * [Performance Modeling and Software Engineering](#performance-modeling-and-software-engineering)
+    * [Physical Implementation and Timing Closure](#physical-implementation-and-timing-closure)
+    * [System-Level Constraints and Advanced Packaging](#system-level-constraints-and-advanced-packaging)
+3. [Academic Foundations and the Strategic Knowledge Refresher](#academic-foundations-and-the-strategic-knowledge-refresher)
+    * [Rebuilding the Core: Advanced Computer Architecture](#rebuilding-the-core-advanced-computer-architecture)
+    * [Mastery of VLSI Systems and Physical Realities](#mastery-of-vlsi-systems-and-physical-realities)
+    * [Domain-Specific Architectures and Hardware/Software Codesign](#domain-specific-architectures-and-hardwaresoftware-codesign)
+    * [Interconnection Networks and Fabric Design](#interconnection-networks-and-fabric-design)
+4. [Navigating the Edge of Technological Advancement: The 2026 Landscape](#navigating-the-edge-of-technological-advancement-the-2026-landscape)
+    * [The Vera Rubin Rack-Scale Paradigm](#the-vera-rubin-rack-scale-paradigm)
+    * [The Memory Wall and Advanced Interconnect Fabrics](#the-memory-wall-and-advanced-interconnect-fabrics)
+    * [Thermo-Mechanical Constraints and 3D Packaging](#thermo-mechanical-constraints-and-3d-packaging)
+5. [High-Impact, Cross-Domain Portfolio Engineering](#high-impact-cross-domain-portfolio-engineering)
+    * [Project 1: RTL-to-GDSII Tapeout of a Sparse Tensor Accelerator Core](#project-1-rtl-to-gdsii-tapeout-of-a-sparse-tensor-accelerator-core)
+    * [Project 2: Cycle-Accurate C++ Performance Simulator for Rack-Scale Interconnects](#project-2-cycle-accurate-c-performance-simulator-for-rack-scale-interconnects)
+    * [Project 3: Thermal and Power-Aware Hardware/Software Co-Design for HBM Interface](#project-3-thermal-and-power-aware-hardwaresoftware-co-design-for-hbm-interface)
+6. [Navigating the NVIDIA Interview Crucible: Preparation and Tactics](#navigating-the-nvidia-interview-crucible-preparation-and-tactics)
+    * [Digital Logic and RTL Fundamentals](#digital-logic-and-rtl-fundamentals)
+    * [Static Timing Analysis and Physical Realities](#static-timing-analysis-and-physical-realities)
+    * [Computer Architecture and System-Level Trade-offs](#computer-architecture-and-system-level-trade-offs)
+    * [Software Engineering and Algorithmic Proficiency](#software-engineering-and-algorithmic-proficiency)
+7. [Detailed 12-Month Weekly Strategic Roadmap](#detailed-12-month-weekly-strategic-roadmap)
+    * [Phase 1: Rebuilding the Foundation & Theoretical Refresher (Months 1-3)](#phase-1-rebuilding-the-foundation--theoretical-refresher-months-1-3)
+    * [Phase 2: Architecture Modeling & Software Simulation (Months 4-6)](#phase-2-architecture-modeling--software-simulation-months-4-6)
+    * [Phase 3: Physical Design Execution & EDA Fluency (Months 7-9)](#phase-3-physical-design-execution--eda-fluency-months-7-9)
+    * [Phase 4: Advanced Packaging, Edge-of-Art Tech, & Interview Prep (Months 10-12)](#phase-4-advanced-packaging-edge-of-art-tech--interview-prep-months-10-12)
+8. [Works cited](#works-cited)
+
 ## The 2026 Semiconductor Landscape and the Rise of Extreme Codesign
 
 The global semiconductor industry is navigating a profound structural paradigm shift, irrevocably altered by the insatiable computational demands of artificial intelligence, large language models (LLMs), and highly parameterized mixture-of-experts (MoE) architectures.1 For decades, the industry relied on the predictable scaling laws of Moore's Law and Dennard Scaling, wherein shrinking transistor geometries naturally yielded faster, more power-efficient monolithic chips.3 That era has definitively concluded. The physical limitations of atomic-scale manufacturing, coupled with the exponential growth in the parameter counts of deep neural networks, have necessitated an evolutionary leap in how hardware is conceived, architected, and physically realized.4
