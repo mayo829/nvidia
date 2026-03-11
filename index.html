@@ -129,8 +129,8 @@
               { id: 'w4', n: 4, task: "<strong>RTL Rigor:</strong> Complete 100% of the <a href='https://hdlbits.01xz.net/' target='_blank' class='text-cyan-400 hover:underline'>HDLBits</a> SystemVerilog sections." }
             ],
             resources: [
-              "Book|Computer Architecture (Hennessy & Patterson) - Ch 2/3|<a href='https://www.elsevier.com/books/computer-architecture/hennessy/978-0-12-811905-1' target='_blank'>Publisher Link</a>",
-              "Spec|SystemVerilog LRM (IEEE 1800-2017)|<a href='https://ieeexplore.ieee.org/document/8299595' target='_blank'>IEEE Standard</a>",
+              "Book|Computer Architecture (Hennessy & Patterson) - Ch 2/3|<a href='pdfs/Computer-Architecture-A-Quantitative-Approach-6th-Edition.pdf' target='_blank'>Publisher Link</a>",
+              "Spec|SystemVerilog LRM (IEEE 1800-2017)|<a href='pdfs/1800-2017.pdf' target='_blank'>IEEE Standard</a>",
               "Tool|Verilator Documentation|<a href='https://verilator.org/guide/latest/' target='_blank'>Read The Docs</a>",
               "Practice|HDLBits Online SV Practice|<a href='https://hdlbits.01xz.net/' target='_blank'>hdlbits.01xz.net</a>"
             ]
@@ -537,13 +537,15 @@
       const checked = !!done[week.id];
       return (
         <div
-          className={`flex gap-3 p-3 rounded-lg transition-colors cursor-pointer group ${checked ? 'bg-green-500/5' : 'hover:bg-zinc-900'}`}
-          onClick={() => onToggle(week.id)}
+          className={`flex gap-3 p-3 rounded-lg transition-colors group ${checked ? 'bg-green-500/5' : 'hover:bg-zinc-900/50'}`}
         >
           <div className="flex-shrink-0 mt-0.5">
-            <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-all ${
-              checked ? 'bg-green-500 border-green-500' : 'border-zinc-600 group-hover:border-zinc-400'
-            }`}>
+            <div
+              onClick={() => onToggle(week.id)}
+              className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-all cursor-pointer ${
+                checked ? 'bg-green-500 border-green-500' : 'border-zinc-600 hover:border-zinc-300 hover:bg-zinc-700/40'
+              }`}
+            >
               {checked && (
                 <svg className="w-3 h-3 text-black" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
