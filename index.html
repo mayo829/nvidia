@@ -1,0 +1,1296 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NVIDIA Architect Roadmap</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      theme: { extend: { fontFamily: { sans: ['Inter', 'system-ui', 'sans-serif'] } } }
+    }
+  </script>
+  <style>
+    * { box-sizing: border-box; }
+    body { background: #000; }
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #2a2a2a; border-radius: 9999px; }
+    .ring-progress { transition: stroke-dashoffset 0.6s ease; }
+    .progress-fill { transition: width 0.4s ease; }
+    .fade-in { animation: fadeUp 0.25s ease; }
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="text/babel">
+    const { useState, useEffect, useCallback } = React;
+
+    // ===================== DATA =====================
+    const QUARTER_PROJECTS = {
+      "Q1": {
+        quarterLabel: "Q1: Architecture & RTL",
+        title: "Out-of-Order RISC-V Core & AXI SoC",
+        desc: "Transition from academic single-cycle designs to a production-grade, out-of-order superscalar RISC-V processor. Implement Tomasulo's algorithm in SystemVerilog, wrap it in a standard AMBA AXI4 interconnect, and prepare it for physical synthesis.",
+        implementation: [
+          "➔ <strong>Language:</strong> Synthesizable SystemVerilog (IEEE 1800-2017).",
+          "➔ <strong>Core Architecture:</strong> RV32IM, 2-way superscalar, Tomasulo's with Reorder Buffer (ROB) for precise exceptions.",
+          "➔ <strong>Memory:</strong> L1 Data/Instruction Cache (Direct Mapped → Set Associative).",
+          "➔ <strong>Interconnect:</strong> Custom AXI4 Crossbar connecting the core, a memory controller, and a UART peripheral."
+        ],
+        testing: [
+          "➔ <strong>Toolchain:</strong> Use <a href='https://verilator.org/' target='_blank' class='text-cyan-400 hover:underline'>Verilator</a> (C++) for cycle-accurate simulation.",
+          "➔ <strong>Unit Tests:</strong> DPI-C interfaces to load custom assembly hex files.",
+          "➔ <strong>Integration:</strong> Pass the official <a href='https://github.com/riscv-software-src/riscv-tests' target='_blank' class='text-cyan-400 hover:underline'>riscv-tests compliance suite</a>.",
+          "➔ <strong>Interconnect Validation:</strong> Use an open-source AXI VIP to randomize back-pressure (TREADY toggling) to catch deadlocks."
+        ],
+        grading: "PASS CONDITION: Core successfully boots a lightweight C program (e.g., Dhrystone) compiled with GCC via Verilator. IPC consistently > 1.2. Synthesis logs (via Yosys) show ZERO inferred latches and ZERO combinational loops."
+      },
+      "Q2": {
+        quarterLabel: "Q2: Physical Design Bridge",
+        title: "Tape-Out Ready ASIC Flow (RTL-to-GDSII)",
+        desc: "RTL is meaningless if it cannot be printed on silicon. Push your Q1 SoC through a complete physical design flow targeting the Skywater 130nm node, solving real-world routing and timing congestion issues.",
+        implementation: [
+          "➔ <strong>Flow Automation:</strong> <a href='https://github.com/The-OpenROAD-Project/OpenLane' target='_blank' class='text-cyan-400 hover:underline'>OpenLane / OpenROAD</a> ecosystem.",
+          "➔ <strong>Synthesis:</strong> Yosys mapping to Sky130 standard cell libraries.",
+          "➔ <strong>Timing Constraints:</strong> Write strict .sdc files defining clocks, input/output delays, and false paths.",
+          "➔ <strong>Floorplanning & CTS:</strong> Define core dimensions, place SRAM macros, build power rings (PDN), synthesize a balanced clock tree."
+        ],
+        testing: [
+          "➔ <strong>STA:</strong> Use OpenSTA to verify setup/hold times across worst-case corners.",
+          "➔ <strong>Physical Sign-off:</strong> Use <a href='http://opencircuitdesign.com/magic/' target='_blank' class='text-cyan-400 hover:underline'>Magic VLSI</a> for DRC and Netgen for LVS.",
+          "➔ <strong>Post-Layout Sim:</strong> Run gate-level simulations with SDF back-annotation to ensure the routed design still functions."
+        ],
+        grading: "PASS CONDITION: GDSII file generated. DRC violations = 0. LVS = Clean. Worst Negative Slack (WNS) > 0 at 250MHz+. Core Area utilization < 75% to prevent routing bottlenecks."
+      },
+      "Q3": {
+        quarterLabel: "Q3: NVIDIA & Advanced Arch",
+        title: "Systolic Tensor Accelerator & Mesh NoC",
+        desc: "Design the hardware that powers modern AI. Build an INT8 Systolic Array (the architectural basis of NVIDIA Tensor Cores) and connect it using a scalable Network-on-Chip (NoC).",
+        implementation: [
+          "➔ <strong>Compute Engine:</strong> 8x8 INT8 Systolic Array in SystemVerilog.",
+          "➔ <strong>Dataflow:</strong> Implement a Weight-Stationary spatial dataflow to minimize SRAM reads.",
+          "➔ <strong>Network-on-Chip:</strong> 2D Mesh NoC router with 5 ports (N,S,E,W,Local), XY routing, credit-based flow control.",
+          "➔ <strong>System Integration:</strong> Connect the Systolic Array as a co-processor node on the NoC."
+        ],
+        testing: [
+          "➔ <strong>Software Baseline:</strong> Write a <a href='https://pytorch.org/' target='_blank' class='text-cyan-400 hover:underline'>PyTorch</a> script doing 8x8 matrix multiplication. Extract tensors to hex files.",
+          "➔ <strong>Hardware Verification:</strong> Feed hex files through the NoC into the array in Verilator. Compare hardware output to PyTorch baseline.",
+          "➔ <strong>NoC Stress Test:</strong> Inject synthetic traffic patterns to measure maximum network bisection bandwidth."
+        ],
+        grading: "PASS CONDITION: Bit-accurate match with PyTorch baseline. PE utilization > 90% during steady-state streaming. NoC router synthesizes at >500MHz with zero dropped flits under 80% network load."
+      },
+      "Q4": {
+        quarterLabel: "Q4: Industry Hardening",
+        title: "UVM Verification & Portfolio Polish",
+        desc: "Build an industry-standard UVM testbench for your AI accelerator, then package your 12 months of work into a compelling engineering portfolio.",
+        implementation: [
+          "➔ <strong>UVM Framework:</strong> Build SV Classes for Sequences, Drivers, Monitors, and a Predictor Scoreboard.",
+          "➔ <strong>Assertions:</strong> Write SystemVerilog Assertions (SVA) property blocks directly into your RTL.",
+          "➔ <strong>Constrained Random:</strong> Generate edge-case matrices via rand and constraint blocks.",
+          "➔ <strong>Portfolio:</strong> Document all projects on GitHub Pages with block diagrams, layout screenshots, and STA reports."
+        ],
+        testing: [
+          "➔ <strong>Coverage Driven Verification:</strong> Define covergroups for FSM states, cross-coverage for ALU ops, and toggle coverage for critical buses.",
+          "➔ <strong>Regression:</strong> Run 1,000+ randomized transaction seeds overnight to hunt for deep-state corner case bugs.",
+          "➔ <strong>Peer Review:</strong> Conduct mock technical interviews explaining the critical path of your RISC-V core and Tensor accelerator dataflow."
+        ],
+        grading: "PASS CONDITION: 100% Code Coverage (Line, Toggle). >95% Functional Coverage on defined bins. GitHub repository features a professional README detailing PPA metrics. Resume clears standard ATS screeners for ASIC/Physical Design."
+      }
+    };
+
+    const PHASES = [
+      {
+        id: 'phase1', number: 1, title: 'Architecture & RTL Polish', subtitle: 'Months 1–3',
+        goal: 'Re-establish fundamentals, transition to modern SystemVerilog, and understand SoCs.',
+        accent: '#22d3ee', quarterId: 'Q1',
+        months: [
+          {
+            id: 'm1', number: 1, title: 'Fundamentals & Toolchain Setup',
+            intro: "Rebuild your mental models from UMich EECS 370/470 and transition to modern industry toolchains.",
+            milestone: "Configure Verilator environment. Design and simulate a parameterized Async FIFO using dual-flop synchronizers and standard SV interfaces.",
+            context: "NVIDIA interviews routinely test your deep understanding of FIFOs and CDC. Getting this right early prevents massive headaches when integrating your SoC components later.",
+            skills: [60, 40, 10, 20, 20],
+            weeks: [
+              { id: 'w1', n: 1, task: "<strong>SystemVerilog Refresh:</strong> Master SV datatypes (logic, struct, enum, interface) over legacy Verilog. Read IEEE 1800 LRM Ch 3-9." },
+              { id: 'w2', n: 2, task: "<strong>Simulation Setup:</strong> Install <a href='https://verilator.org/' target='_blank' class='text-cyan-400 hover:underline'>Verilator</a> and GTKWave. Open-source C++ simulation is required for complex SoCs." },
+              { id: 'w3', n: 3, task: "<strong>Clock Domain Crossing (CDC):</strong> Understand metastability. Build a parameterized Async FIFO. This is a guaranteed interview question." },
+              { id: 'w4', n: 4, task: "<strong>RTL Rigor:</strong> Complete 100% of the <a href='https://hdlbits.01xz.net/' target='_blank' class='text-cyan-400 hover:underline'>HDLBits</a> SystemVerilog sections." }
+            ],
+            resources: [
+              "Book|Computer Architecture (Hennessy & Patterson) - Ch 2/3|<a href='https://www.elsevier.com/books/computer-architecture/hennessy/978-0-12-811905-1' target='_blank'>Publisher Link</a>",
+              "Spec|SystemVerilog LRM (IEEE 1800-2017)|<a href='https://ieeexplore.ieee.org/document/8299595' target='_blank'>IEEE Standard</a>",
+              "Tool|Verilator Documentation|<a href='https://verilator.org/guide/latest/' target='_blank'>Read The Docs</a>",
+              "Practice|HDLBits Online SV Practice|<a href='https://hdlbits.01xz.net/' target='_blank'>hdlbits.01xz.net</a>"
+            ]
+          },
+          {
+            id: 'm2', number: 2, title: 'Out-of-Order Execution RTL',
+            intro: "Apply EECS 470 concepts (Tomasulo's) into synthesizable RTL for your RISC-V core.",
+            milestone: "Complete the Core Datapath. Implement Instruction Fetch, Decode, Reservation Stations, and basic Reorder Buffer (ROB).",
+            context: "A hybrid architect must know exactly how many logic levels exist in a Tomasulo scheduler. High-performance GPUs use similar scoreboard mechanisms for warp scheduling.",
+            skills: [75, 60, 15, 25, 30],
+            weeks: [
+              { id: 'w5', n: 5, task: "<strong>Decode & Issue:</strong> Implement the RV32IM decoder. Build a 2-way dispatch unit." },
+              { id: 'w6', n: 6, task: "<strong>Tomasulo Implementation:</strong> Code parameterized Reservation Stations for ALUs and Branch units." },
+              { id: 'w7', n: 7, task: "<strong>Reorder Buffer (ROB):</strong> Design the circular buffer for in-order commit and precise exception handling." },
+              { id: 'w8', n: 8, task: "<strong>Memory Subsystem:</strong> Design a basic direct-mapped L1 Data Cache with stall logic." }
+            ],
+            resources: [
+              "Spec|RISC-V Unprivileged ISA Vol 1|<a href='https://riscv.org/technical/specifications/' target='_blank'>riscv.org</a>",
+              "Repo|PULP Platform RI5CY Core|<a href='https://github.com/pulp-platform/riscv' target='_blank'>GitHub</a>",
+              "Paper|The Tomasulo Algorithm|<a href='https://en.wikipedia.org/wiki/Tomasulo_algorithm' target='_blank'>Overview</a>"
+            ]
+          },
+          {
+            id: 'm3', number: 3, title: 'AMBA AXI & Core Integration',
+            intro: "Convert your isolated core into a true System-on-Chip capable of high-bandwidth memory access.",
+            milestone: "Wrap the RISC-V core memory interfaces in AXI4 Master protocols. Design a 2x2 AXI Crossbar and run the compliance suite.",
+            context: "NVIDIA's massive chips rely on highly complex, high-bandwidth interconnects (like NVLink). AXI is the foundational industry standard you must master first.",
+            skills: [80, 75, 20, 35, 50],
+            weeks: [
+              { id: 'w9', n: 9, task: "<strong>AXI4 Deep Dive:</strong> Master the 5 channels (AW, AR, W, R, B) and VALID/READY handshakes." },
+              { id: 'w10', n: 10, task: "<strong>AXI Wrappers:</strong> Convert your L1 Cache misses into AXI4 burst transactions." },
+              { id: 'w11', n: 11, task: "<strong>Interconnect Design:</strong> Build a custom AXI crossbar with round-robin arbitration." },
+              { id: 'w12', n: 12, task: "<strong>Validation:</strong> Hook up a simulated main memory. Run riscv-compliance tests via Verilator C++ DPI." }
+            ],
+            resources: [
+              "Spec|AMBA AXI Protocol Spec|<a href='https://developer.arm.com/documentation/ihi0022/e/' target='_blank'>ARM Developer</a>",
+              "Repo|Alex Forencich's Verilog-AXI|<a href='https://github.com/alexforencich/verilog-axi' target='_blank'>GitHub</a>",
+              "Suite|RISC-V Compliance Tests|<a href='https://github.com/riscv-software-src/riscv-tests' target='_blank'>GitHub</a>"
+            ]
+          }
+        ]
+      },
+      {
+        id: 'phase2', number: 2, title: 'Physical Design Bridge', subtitle: 'Months 4–6',
+        goal: 'Transition from logical RTL to physical gates targeting the physical design mandate.',
+        accent: '#818cf8', quarterId: 'Q2',
+        months: [
+          {
+            id: 'm4', number: 4, title: 'Synthesis & Static Timing (STA)',
+            intro: "The transition from logical code to physical gates. Learn to constraint your design for frequency targets.",
+            milestone: "Synthesize the Q1 SoC using Yosys. Write custom .sdc files targeting 300MHz. Refactor RTL to fix all Setup time violations.",
+            context: "This bridges the Hybrid gap. Writing architecture without understanding STA leads to unroutable, slow chips. NVIDIA values architects who write timing-aware RTL.",
+            skills: [80, 80, 45, 40, 50],
+            weeks: [
+              { id: 'w13', n: 13, task: "<strong>Yosys Automation:</strong> Script Yosys to map your SystemVerilog to the Skywater 130nm standard cell library." },
+              { id: 'w14', n: 14, task: "<strong>Constraints (SDC):</strong> Write .sdc files. Define create_clock, set_input_delay, and identify set_false_path across CDC boundaries." },
+              { id: 'w15', n: 15, task: "<strong>STA Analysis:</strong> Use OpenSTA. Analyze timing reports. Find the critical path (Worst Negative Slack)." },
+              { id: 'w16', n: 16, task: "<strong>RTL Refactoring:</strong> Break up deep logic cones in your AXI crossbar or ALU. Add pipeline registers to close timing." }
+            ],
+            resources: [
+              "Book|Static Timing Analysis (J. Bhasker)|<a href='https://link.springer.com/book/10.1007/978-0-387-89653-3' target='_blank'>Springer</a>",
+              "Tool|Yosys Open Synthesis Suite|<a href='https://yosyshq.net/yosys/' target='_blank'>YosysHQ</a>",
+              "Doc|Synopsys Design Constraints (SDC)|<a href='https://www.vlsi-expert.com/p/sdc.html' target='_blank'>VLSI Expert</a>"
+            ]
+          },
+          {
+            id: 'm5', number: 5, title: 'ASIC Floorplanning & Routing',
+            intro: "Get hands-on with the backend Physical Design flow used to generate actual silicon layouts.",
+            milestone: "Push the SoC through OpenLane. Create a valid floorplan, define the Power Delivery Network (PDN), and achieve successful detailed routing.",
+            context: "Physical designers at NVIDIA spend days battling routing congestion. Experiencing this teaches you how to architect cleaner interconnects at the RTL level.",
+            skills: [80, 80, 70, 45, 60],
+            weeks: [
+              { id: 'w17', n: 17, task: "<strong>OpenLane Setup:</strong> Install the <a href='https://github.com/The-OpenROAD-Project/OpenLane' target='_blank' class='text-cyan-400 hover:underline'>OpenLane</a> RTL-to-GDSII flow docker environment." },
+              { id: 'w18', n: 18, task: "<strong>Floorplanning:</strong> Define die area, core utilization, and place macro blocks (SRAM) manually via config.tcl." },
+              { id: 'w19', n: 19, task: "<strong>Clock Tree Synthesis (CTS):</strong> Run CTS. Analyze clock skew and insertion delay reports." },
+              { id: 'w20', n: 20, task: "<strong>Routing:</strong> Execute global and detailed routing. Resolve routing congestion hot-spots." }
+            ],
+            resources: [
+              "Course|Zero to ASIC Course|<a href='https://zerotoasiccourse.com/' target='_blank'>Matt Venn</a>",
+              "Repo|OpenLane GitHub|<a href='https://github.com/The-OpenROAD-Project/OpenLane' target='_blank'>GitHub</a>",
+              "Doc|Skywater 130nm PDK|<a href='https://skywater-pdk.readthedocs.io/en/main/' target='_blank'>ReadTheDocs</a>"
+            ]
+          },
+          {
+            id: 'm6', number: 6, title: 'Sign-off & Tape-Out Run',
+            intro: "Finalize the physical layout. Prove the chip is manufacturable and functionally correct post-routing.",
+            milestone: "Achieve 0 DRC/LVS violations. Generate final GDSII file. Run a post-layout gate-level simulation with SDF timing back-annotation.",
+            context: "Having a verified, DRC-clean GDSII layout of an out-of-order processor proves elite capability. It is the ultimate proof of a Hybrid skill set.",
+            skills: [85, 80, 85, 50, 65],
+            weeks: [
+              { id: 'w21', n: 21, task: "<strong>Physical Verification:</strong> Run Magic VLSI. Fix specific DRC violations (antenna rules, spacing)." },
+              { id: 'w22', n: 22, task: "<strong>LVS Sign-off:</strong> Use Netgen to ensure the physical layout matches your synthesized netlist perfectly." },
+              { id: 'w23', n: 23, task: "<strong>Gate-Level Sim (GLS):</strong> Export the SDF file. Run Verilator on the netlist to verify functionality with physical delays." },
+              { id: 'w24', n: 24, task: "<strong>PPA Extraction:</strong> Extract final Power, Performance, and Area metrics for your portfolio." }
+            ],
+            resources: [
+              "Tool|Magic VLSI Layout Tool|<a href='http://opencircuitdesign.com/magic/' target='_blank'>OpenCircuitDesign</a>",
+              "Tool|Netgen LVS|<a href='http://opencircuitdesign.com/netgen/' target='_blank'>OpenCircuitDesign</a>",
+              "Guide|Gate Level Simulation w/ SDF|<a href='https://vlsi.pro/gate-level-simulation/' target='_blank'>VLSI Pro</a>"
+            ]
+          }
+        ]
+      },
+      {
+        id: 'phase3', number: 3, title: 'NVIDIA & Advanced Arch', subtitle: 'Months 7–9',
+        goal: 'Pivot towards highly parallel architectures, AI accelerators, and silicon boundaries.',
+        accent: '#34d399', quarterId: 'Q3',
+        months: [
+          {
+            id: 'm7', number: 7, title: 'GPU SIMT & CUDA Baselines',
+            intro: "Pivot to NVIDIA's specific domain: highly parallel spatial compute architectures.",
+            milestone: "Understand the SM hardware. Write and aggressively optimize a PyTorch/CUDA GEMM kernel to serve as a baseline for hardware design.",
+            context: "You cannot architect accelerators without understanding the software workloads (CUDA/AI) and their bottlenecks. This month links software performance directly to hardware design.",
+            skills: [90, 80, 85, 50, 75],
+            weeks: [
+              { id: 'w25', n: 25, task: "<strong>SIMT Architecture:</strong> Study Warps, Thread Blocks, and divergence hardware. Read the <a href='https://resources.nvidia.com/en-us-tensor-core/nvidia-hopper-architecture-in-depth' target='_blank' class='text-cyan-400 hover:underline'>Hopper Architecture Whitepaper</a>." },
+              { id: 'w26', n: 26, task: "<strong>CUDA Memory:</strong> Master Global memory coalescing, Shared Memory bank conflicts, and register pressure." },
+              { id: 'w27', n: 27, task: "<strong>Software Baseline:</strong> Write an optimized PyTorch/CUDA Matrix Multiply kernel." },
+              { id: 'w28', n: 28, task: "<strong>Profiling:</strong> Use Nsight Compute to profile your kernel. Identify memory vs. compute bounds." }
+            ],
+            resources: [
+              "Paper|NVIDIA Hopper Architecture|<a href='https://resources.nvidia.com/en-us-tensor-core/nvidia-hopper-architecture-in-depth' target='_blank'>NVIDIA Resources</a>",
+              "Course|Stanford CS149: Parallel Computing|<a href='https://graphics.stanford.edu/courses/cs149-24-fall/' target='_blank'>Stanford</a>",
+              "Book|Programming Massively Parallel Processors|<a href='https://www.elsevier.com/books/programming-massively-parallel-processors/hwu/978-0-323-91231-0' target='_blank'>Elsevier</a>"
+            ]
+          },
+          {
+            id: 'm8', number: 8, title: 'Systolic Tensor Array RTL',
+            intro: "Design the core algorithmic accelerator mimicking modern Tensor Cores.",
+            milestone: "Design an 8x8 parameterized Multiply-Accumulate (MAC) Systolic Array in SystemVerilog using a Weight-Stationary dataflow.",
+            context: "AI acceleration is NVIDIA's current and future focus. A systolic array project proves you understand spatial computing — the physical manifestation of massive matrix math.",
+            skills: [95, 88, 85, 50, 80],
+            weeks: [
+              { id: 'w29', n: 29, task: "<strong>Systolic Theory:</strong> Study the <a href='https://eyeriss.mit.edu/' target='_blank' class='text-cyan-400 hover:underline'>Eyeriss paper</a>. Compare Weight-Stationary vs. Output-Stationary dataflows." },
+              { id: 'w30', n: 30, task: "<strong>PE Design:</strong> Code the Processing Element (MAC + Local Register) in SV." },
+              { id: 'w31', n: 31, task: "<strong>Array Generation:</strong> Use SV generate blocks to instantiate the 8x8 grid. Connect orthogonal data paths." },
+              { id: 'w32', n: 32, task: "<strong>Edge Buffers:</strong> Design the SRAM interface controllers to stream activations and weights into the array." }
+            ],
+            resources: [
+              "Paper|Eyeriss: Spatial Architecture for Dataflow|<a href='https://eyeriss.mit.edu/pubs/chen_jssc_2017.pdf' target='_blank'>MIT Eyeriss</a>",
+              "Repo|NVDLA (NVIDIA Deep Learning Accelerator)|<a href='https://github.com/nvdla/hw' target='_blank'>GitHub (Reference)</a>",
+              "Video|Hardware for Machine Learning|<a href='https://www.youtube.com/watch?v=nBExxaK3_Rk' target='_blank'>MIT YouTube</a>"
+            ]
+          },
+          {
+            id: 'm9', number: 9, title: 'Network-on-Chip (NoC)',
+            intro: "Scale out your accelerator. Understand how massive chips route data internally.",
+            milestone: "Design a 2D Mesh NoC router in SystemVerilog. Connect the Systolic Array and test maximum throughput under synthetic traffic.",
+            context: "Advanced packaging and high-speed NoCs (like NVLink/NVSwitch) are how NVIDIA scales performance beyond a single reticle limit. This knowledge is highly sought after.",
+            skills: [95, 92, 85, 55, 90],
+            weeks: [
+              { id: 'w33', n: 33, task: "<strong>NoC Theory:</strong> Study topologies, XY routing, and credit-based flow control." },
+              { id: 'w34', n: 34, task: "<strong>Router Microarchitecture:</strong> Design virtual channels, input buffers, and the crossbar allocator." },
+              { id: 'w35', n: 35, task: "<strong>Integration:</strong> Wrap your Systolic Array into a network node. Connect multiple dummy nodes." },
+              { id: 'w36', n: 36, task: "<strong>Traffic Stress Test:</strong> Inject uniform and hot-spot traffic in Verilator. Monitor latency and throughput metrics." }
+            ],
+            resources: [
+              "Book|Principles of Interconnection Networks (Dally)|<a href='https://www.elsevier.com/books/principles-and-practices-of-interconnection-networks/dally/978-0-12-200751-4' target='_blank'>Elsevier</a>",
+              "Paper|NVIDIA NVSwitch Architecture|<a href='https://developer.nvidia.com/blog/dgx-h100-nvlink-network/' target='_blank'>NVIDIA Blog</a>",
+              "Spec|UCIe (Chiplet Standard)|<a href='https://www.uciexpress.org/' target='_blank'>UCIe Org</a>"
+            ]
+          }
+        ]
+      },
+      {
+        id: 'phase4', number: 4, title: 'Verification & Prep', subtitle: 'Months 10–12',
+        goal: 'Prove your designs with UVM and condition yourself for NVIDIA technical interviews.',
+        accent: '#fb923c', quarterId: 'Q4',
+        months: [
+          {
+            id: 'm10', number: 10, title: 'UVM Framework Construction',
+            intro: "Design is only half the job. Build a production-grade verification environment to prove your accelerator works.",
+            milestone: "Construct a UVM Testbench for the Systolic Array. Implement Sequences, Drivers, and a C++ reference Predictor inside the Scoreboard.",
+            context: "Architects and RTL designers at NVIDIA work hand-in-hand with Verification engineers. Knowing UVM makes you a vastly superior RTL designer because you write testable code.",
+            skills: [95, 92, 85, 80, 90],
+            weeks: [
+              { id: 'w37', n: 37, task: "<strong>UVM OOP Setup:</strong> Learn UVM phases, uvm_component, and Factory registration." },
+              { id: 'w38', n: 38, task: "<strong>Agents & Interfaces:</strong> Build active and passive AXI-Stream agents." },
+              { id: 'w39', n: 39, task: "<strong>Scoreboard & Reference Model:</strong> Implement a cycle-accurate C++ predictor to generate golden expected outputs." },
+              { id: 'w40', n: 40, task: "<strong>Constrained Random:</strong> Write SV sequence blocks generating massive random matrices to stress the hardware." }
+            ],
+            resources: [
+              "Site|Verification Academy (Siemens)|<a href='https://verificationacademy.com/topics/uvm' target='_blank'>Verification Academy</a>",
+              "Platform|EDA Playground (Run UVM free)|<a href='https://www.edaplayground.com/' target='_blank'>EDA Playground</a>",
+              "Book|SV for Verification (Chris Spear)|<a href='https://link.springer.com/book/10.1007/978-1-4614-0715-7' target='_blank'>Springer</a>"
+            ]
+          },
+          {
+            id: 'm11', number: 11, title: 'Coverage Closure & Assertions',
+            intro: "Hunting the final bugs and proving 100% reliability.",
+            milestone: "Implement SystemVerilog Assertions (SVA) and functional covergroups. Achieve 100% Code Coverage and >95% Functional Coverage.",
+            context: "NVIDIA interviews focus heavily on corner cases. SVA and Coverage teach you how to think maliciously about hardware failures.",
+            skills: [95, 95, 90, 95, 90],
+            weeks: [
+              { id: 'w41', n: 41, task: "<strong>Assertions (SVA):</strong> Write concurrent properties inside the RTL to instantly flag illegal AXI transitions." },
+              { id: 'w42', n: 42, task: "<strong>Functional Coverage:</strong> Define covergroups tracking specific ALU op-codes, matrix sparsities, and FIFO states." },
+              { id: 'w43', n: 43, task: "<strong>Regression Runs:</strong> Run thousands of randomized seeds to hit corner cases." },
+              { id: 'w44', n: 44, task: "<strong>Interview Drill:</strong> Practice whiteboard coding. Draw an Async FIFO and explain Tomasulo's in under 5 minutes." }
+            ],
+            resources: [
+              "Guide|SVA Basics|<a href='https://verificationguide.com/systemverilog/systemverilog-assertions/' target='_blank'>Verification Guide</a>",
+              "Book|Cracking Digital VLSI Interview|<a href='https://www.amazon.com/Cracking-Digital-VLSI-Verification-Interview/dp/1530266005' target='_blank'>Amazon</a>",
+              "Community|r/FPGA Interview Threads|<a href='https://www.reddit.com/r/FPGA/' target='_blank'>Reddit</a>"
+            ]
+          },
+          {
+            id: 'm12', number: 12, title: 'Execution & Application',
+            intro: "Packaging 12 months of extreme effort into a format that forces recruiters to notice you.",
+            milestone: "Deploy a GitHub Pages portfolio. Optimize resume for ATS keywords. Execute targeted networking strategy.",
+            context: "A world-class project requires world-class presentation. Highlighting physical awareness (GDSII, STA) alongside complex architecture (Tomasulo, Systolic) matches the Hybrid goal perfectly.",
+            skills: [100, 100, 95, 95, 95],
+            weeks: [
+              { id: 'w45', n: 45, task: "<strong>Portfolio Deploy:</strong> Ensure all code is public. Create dense, visual READMEs with Draw.io block diagrams and GDSII screenshots." },
+              { id: 'w46', n: 46, task: "<strong>Resume Engineering:</strong> Quantify physical metrics ('Synthesized at 250MHz in Sky130', '100% UVM Coverage')." },
+              { id: 'w47', n: 47, task: "<strong>Networking:</strong> Use LinkedIn to contact UMich alumni at NVIDIA. Ask for feedback on your portfolio." },
+              { id: 'w48', n: 48, task: "<strong>Targeted Apply:</strong> Apply for 'ASIC Design', 'Physical Design Architecture', 'GPU Core Architect', and 'SoC Verification'." }
+            ],
+            resources: [
+              "Tool|GitHub Pages|<a href='https://pages.github.com/' target='_blank'>GitHub Docs</a>",
+              "Tool|Draw.io for Architecture Diagrams|<a href='https://app.diagrams.net/' target='_blank'>Draw.io</a>",
+              "Portal|NVIDIA Careers|<a href='https://nvidia.wd5.myworkdayjobs.com/NVIDIAExternalCareerSite' target='_blank'>Apply Here</a>"
+            ]
+          }
+        ]
+      }
+    ];
+    const FOUNDATIONS = [
+      {
+        id: 'f1', title: 'Advanced Computer Architecture', icon: '⬡',
+        courses: [
+          { name: 'UMich EECS 370 & 470', desc: 'ISA, datapath, pipelining, OoO execution, superscalar design.', href: 'https://eecs370.github.io/' },
+          { name: 'MIT 6.5900', desc: 'Multithreaded architectures, cache coherence (MESI), vector supercomputers.', href: 'https://csg.csail.mit.edu/6.5900/' },
+          { name: 'Stanford EE282', desc: 'Advanced memory hierarchies, virtualization, cluster-scale analysis.', href: 'https://online.stanford.edu/courses/ee282-computer-systems-architecture' },
+        ],
+        why: 'Grasping power/area trade-offs of speculative structures explains why parallel architectures dominate modern GPUs.'
+      },
+      {
+        id: 'f2', title: 'VLSI Systems & Physical Realities', icon: '◈',
+        courses: [
+          { name: 'UMich EECS 427', desc: 'Mask-level CMOS layout and static CMOS circuit delay.', href: 'https://ece.engin.umich.edu/academics/course-information/course-descriptions/eecs-427/' },
+          { name: 'Stanford EE271', desc: 'Logical effort, DFT, dynamic verification, physical layout synthesis.', href: 'https://online.stanford.edu/courses/ee271-introduction-vlsi-systems' },
+          { name: 'Stanford EE273', desc: 'Transmission lines, impedance matching, skew/jitter, crosstalk, PDNs.', href: 'https://online.stanford.edu/courses/ee273-digital-systems-engineering' },
+        ],
+        why: 'Bridges logical architecture and physical hardware — predicts if an RTL datapath will meet timing constraints before synthesis.'
+      },
+      {
+        id: 'f3', title: 'Hardware/Software Codesign for AI', icon: '◆',
+        courses: [
+          { name: 'Stanford CS217', desc: 'Dataflow architectures, tensor mechanics, FP8/FP4 precision, network sparsity.', href: 'https://cs217.stanford.edu/' },
+          { name: 'MIT 6.5930', desc: 'Co-optimization of algorithms and hardware, systolic array mapping, compute-in-memory (CiM).', href: 'https://csg.csail.mit.edu/6.5930/' },
+        ],
+        why: 'Essential for mapping neural network topologies onto silicon, minimizing energy-intensive data movement between processing elements.'
+      },
+      {
+        id: 'f4', title: 'Interconnection Networks & Fabrics', icon: '◉',
+        courses: [
+          { name: 'Stanford EE382C', desc: 'Network topologies, routing algorithms, credit-based flow control, virtual channel allocation, deadlock prevention.', href: 'http://cva.stanford.edu/classes/ee382c/' },
+        ],
+        why: 'Disaggregated architectures rely on massive communication fabrics. Router microarchitecture knowledge is mandatory for NVLink-like development.'
+      }
+    ];
+
+    const PROJECTS = [
+      {
+        id: 'p1', number: '01', title: 'RTL-to-GDSII Sparse Tensor Accelerator',
+        icon: '⬡', tag: 'RTL / Physical Design',
+        objective: 'Design, verify, and execute the full physical synthesis flow for an ML-focused hardware accelerator using open-source EDA tools.',
+        strategy: 'Utilize OpenLane EDA infrastructure and SkyWater 130nm PDK. Write synthesizable SystemVerilog for a parameterized systolic array optimized for matrix multiplication, incorporating sparse data control logic (zero-skip). Drive through Logic Synthesis (Yosys), Floorplanning (OpenROAD), Clock Tree Synthesis (TritonCTS), Routing, and Sign-off (OpenSTA, Magic).',
+        value: 'Proves hybrid capability by successfully navigating timing closure, power distribution, and spatial layout constraints for a complex mathematical accelerator.',
+        links: [
+          { label: 'OpenLane Docs', href: 'https://openlane2.readthedocs.io/en/latest/getting_started/newcomers/index.html' },
+          { label: 'Example Repo', href: 'https://github.com/aasthadave9/Advanced-Physical-Design-Using-OpenLANE-Sky130' },
+        ]
+      },
+      {
+        id: 'p2', number: '02', title: 'Cycle-Accurate C++ NoC Simulator',
+        icon: '◈', tag: 'C++ / Software Modeling',
+        objective: 'Architect and develop a highly parameterized, discrete-event software simulator modeling a scalable network-on-chip (NoC) or die-to-die fabric.',
+        strategy: 'Using modern C++, build a simulator modeling various network topologies (2D mesh, flattened butterfly, torus), Virtual Channel Management (credit-based flow control), Switch Arbitration (iSLIP allocators), and Synthetic Traffic Generation. Generate latency-vs-throughput curves to justify routing algorithm choices.',
+        value: 'Highlights necessary software engineering proficiency — proves the ability to write clean, object-oriented C++ and use empirical data to drive architectural decisions.',
+        links: []
+      },
+      {
+        id: 'p3', number: '03', title: 'Power/Thermal Co-Design for HBM Interface',
+        icon: '◉', tag: 'RTL / Thermal Analysis',
+        objective: 'Implement an HBM controller in RTL coupled with quantitative analysis of power-performance trade-offs under simulated 2.5D packaging thermal constraints.',
+        strategy: 'Design a simplified memory controller in Verilog managing parallel memory channels, request scheduling, and page activation policies. Use analytical models to estimate dynamic and leakage power under aggressive access patterns, concluding with a whitepaper on power vs. frequency trade-offs in CoWoS packages.',
+        value: 'Demonstrates a mature, cross-disciplinary perspective that values performance-per-watt and thermo-mechanical viability as highly as raw throughput.',
+        links: [
+          { label: 'CoWoS & Chiplets Overview', href: 'https://semiengineering.com/knowledge_centers/packaging/multi-die-assemblies/chiplets/chiplets-deep-dive-into-designing-manufacturing-and-testing/' }
+        ]
+      }
+    ];
+
+    const INTERVIEW_AREAS = [
+      {
+        id: 'i1', title: 'Digital Logic & RTL', tag: 'On-the-spot Coding',
+        points: [
+          'Write Mealy/Moore state machines and round-robin arbiters directly on a whiteboard.',
+          'Explain CDC synchronizer chains, handshaking, and Gray-code async FIFO design.',
+          'State encoding trade-offs: one-hot vs. binary vs. Gray code.'
+        ]
+      },
+      {
+        id: 'i2', title: 'Static Timing Analysis', tag: 'Math-Heavy',
+        points: [
+          'Mathematically calculate setup/hold slacks incorporating jitter, skew, and cell delays.',
+          'Articulate a hierarchy of solutions for timing violations (cell resizing, fan-out reduction, restructuring logic, useful skew).',
+          'Draw timing waveforms for multi-cycle paths and explain how CTS affects hold margins.'
+        ]
+      },
+      {
+        id: 'i3', title: 'Computer Architecture & System Design', tag: 'System-Level Reasoning',
+        points: [
+          'Diagram an out-of-order execution pipeline (reorder buffer, reservation stations, register renaming).',
+          'Discuss cache coherence protocols (MESI/MOESI) and the performance gap between on-chip SRAM and off-chip HBM.',
+          'Design the distributed training infrastructure for a massive parameter LLM, discussing compute density vs. NVLink bandwidth.'
+        ]
+      },
+      {
+        id: 'i4', title: 'Software Engineering & Algorithms', tag: 'LeetCode / C++',
+        points: [
+          'Maintain rigorous LeetCode practice (C/C++ and Python) focusing on optimal Big-O complexity.',
+          'Understand OS-level multithreading, mutexes, locks, and parallel programming patterns.',
+          'Target arrays, graphs, trees, and linked lists — achieve a 20-min solve rate on Mediums.'
+        ]
+      }
+    ];
+
+    const CITATIONS = [
+      { label: 'UMich EECS 370', href: 'https://eecs370.github.io/' },
+      { label: 'UMich EECS 470: Computer Architecture', href: 'https://www.eecs.umich.edu/courses/eecs470/overview.html' },
+      { label: 'MIT 6.5900: Computer System Architecture', href: 'https://csg.csail.mit.edu/6.5900/' },
+      { label: 'Stanford EE271: Introduction to VLSI Systems', href: 'https://online.stanford.edu/courses/ee271-introduction-vlsi-systems' },
+      { label: 'Stanford EE273: Digital Systems Engineering', href: 'https://online.stanford.edu/courses/ee273-digital-systems-engineering' },
+      { label: 'Stanford EE282: Computer Systems Architecture', href: 'https://online.stanford.edu/courses/ee282-computer-systems-architecture' },
+      { label: 'Stanford CS217: Hardware Accelerators for ML', href: 'https://cs217.stanford.edu/' },
+      { label: 'Stanford EE382C: Interconnection Networks', href: 'http://cva.stanford.edu/classes/ee382c/' },
+      { label: 'MIT 6.5930: Hardware Architecture for Deep Learning', href: 'https://csg.csail.mit.edu/6.5930/' },
+      { label: 'OpenLane Documentation', href: 'https://openlane2.readthedocs.io/en/latest/getting_started/newcomers/index.html' },
+      { label: 'Advanced Physical Design Using OpenLANE-Sky130 (GitHub)', href: 'https://github.com/aasthadave9/Advanced-Physical-Design-Using-OpenLANE-Sky130' },
+      { label: 'Physical Design with OpenLANE using SKY130-PDK (GitHub)', href: 'https://github.com/shariethernet/Physical-Design-with-OpenLANE-using-SKY130-PDK' },
+      { label: 'Inside the NVIDIA Rubin Platform', href: 'https://developer.nvidia.com/blog/inside-the-nvidia-rubin-platform-six-new-chips-one-ai-supercomputer/' },
+      { label: 'NVIDIA Engineering Guide 2026 – Nora AI', href: 'https://interview.norahq.com/interview-guides/nvidia-asic-design-engineer-interview-guide-2026' },
+      { label: 'NVIDIA Hardware Engineer Interview Guide', href: 'https://interview.norahq.com/interview-guides/nvidia-hardware-engineer-interview-guide-2025' },
+      { label: 'NVIDIA SWE Guide 2026 – Nora AI', href: 'https://interview.norahq.com/interview-guides/nvidia-swe-interview-guide-2026' },
+      { label: 'Chiplet Fundamentals For Engineers: 2026 eBook', href: 'https://semiengineering.com/knowledge_centers/packaging/multi-die-assemblies/chiplets/chiplets-deep-dive-into-designing-manufacturing-and-testing/' },
+      { label: 'My Approach to Designing an AI Accelerator – Medium', href: 'https://srimanthtenneti.medium.com/my-approach-to-designing-an-ai-accelerator-9d8d2af1f7f9' },
+    ];
+
+    // ===================== UTILS =====================
+    const load = (key, fallback) => {
+      try { return JSON.parse(localStorage.getItem(key)) ?? fallback; }
+      catch { return fallback; }
+    };
+    const save = (key, val) => localStorage.setItem(key, JSON.stringify(val));
+
+    const phaseStats = (phase, done) => {
+      let total = 0, completed = 0;
+      phase.months.forEach(m => m.weeks.forEach(w => { total++; if (done[w.id]) completed++; }));
+      return { total, completed, pct: total ? Math.round(completed / total * 100) : 0 };
+    };
+
+    // ===================== ATOMS =====================
+    function ProgressBar({ pct, color = '#22d3ee', thin = false }) {
+      return (
+        <div className={`w-full bg-zinc-800 rounded-full overflow-hidden ${thin ? 'h-[3px]' : 'h-1.5'}`}>
+          <div
+            className="h-full rounded-full progress-fill"
+            style={{ width: `${pct}%`, background: color }}
+          />
+        </div>
+      );
+    }
+
+    function ProgressRing({ pct, size = 72, stroke = 5, color = '#22d3ee' }) {
+      const r = (size - stroke) / 2;
+      const circ = 2 * Math.PI * r;
+      const offset = circ - (pct / 100) * circ;
+      return (
+        <svg width={size} height={size} style={{ transform: 'rotate(-90deg)' }}>
+          <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="#1f2937" strokeWidth={stroke} />
+          <circle
+            cx={size / 2} cy={size / 2} r={r} fill="none"
+            stroke={color} strokeWidth={stroke}
+            strokeDasharray={circ} strokeDashoffset={offset}
+            strokeLinecap="round"
+            className="ring-progress"
+          />
+        </svg>
+      );
+    }
+
+    function Tag({ children }) {
+      return (
+        <span className="text-[10px] font-semibold tracking-widest uppercase px-2 py-0.5 rounded bg-zinc-800 text-zinc-400 border border-zinc-700">
+          {children}
+        </span>
+      );
+    }
+
+    // ===================== WEEK ITEM =====================
+    function WeekItem({ week, done, onToggle }) {
+      const checked = !!done[week.id];
+      return (
+        <div
+          className={`flex gap-3 p-3 rounded-lg transition-colors cursor-pointer group ${checked ? 'bg-green-500/5' : 'hover:bg-zinc-900'}`}
+          onClick={() => onToggle(week.id)}
+        >
+          <div className="flex-shrink-0 mt-0.5">
+            <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-all ${
+              checked ? 'bg-green-500 border-green-500' : 'border-zinc-600 group-hover:border-zinc-400'
+            }`}>
+              {checked && (
+                <svg className="w-3 h-3 text-black" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                </svg>
+              )}
+            </div>
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 mb-1">
+              <span className={`text-[10px] font-bold tracking-widest uppercase ${checked ? 'text-green-500/60' : 'text-zinc-600'}`}>
+                Week {week.n}
+              </span>
+            </div>
+            <div 
+              className={`text-sm leading-relaxed transition-colors [&_strong]:text-zinc-200 [&_a]:text-cyan-400 hover:[&_a]:text-cyan-300 [&_a]:font-medium ${checked ? 'text-zinc-500 line-through opacity-70 [&_strong]:text-zinc-500' : 'text-zinc-300'}`}
+              dangerouslySetInnerHTML={{ __html: week.task }}
+            />
+          </div>
+        </div>
+      );
+    }
+
+    // ===================== RADAR CHART =====================
+    function SkillChart({ skills }) {
+      const chartRef = React.useRef(null);
+      const canvasRef = React.useRef(null);
+      const skillKey = skills ? skills.join(',') : '';
+
+      React.useEffect(() => {
+        if (!canvasRef.current || !skills) return;
+        if (chartRef.current) { chartRef.current.destroy(); chartRef.current = null; }
+        chartRef.current = new Chart(canvasRef.current, {
+          type: 'radar',
+          data: {
+            labels: ['Architecture', 'RTL Design', 'Physical (VLSI)', 'Verification', 'Systems (SoC)'],
+            datasets: [{
+              label: 'Skill Proficiency (%)',
+              data: skills,
+              backgroundColor: 'rgba(34, 211, 238, 0.15)',
+              borderColor: 'rgba(34, 211, 238, 1)',
+              pointBackgroundColor: '#000',
+              pointBorderColor: '#22d3ee',
+              pointHoverBackgroundColor: '#fff',
+              pointHoverBorderColor: '#22d3ee',
+              borderWidth: 2
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+              r: {
+                angleLines: { color: 'rgba(255,255,255,0.1)' },
+                grid: { color: 'rgba(255,255,255,0.08)' },
+                pointLabels: { font: { family: 'Inter', size: 10 }, color: '#a1a1aa' },
+                ticks: { min: 0, max: 100, stepSize: 20, display: false, backdropColor: 'transparent' }
+              }
+            },
+            plugins: {
+              legend: { display: false },
+              tooltip: {
+                backgroundColor: '#18181b',
+                borderColor: '#27272a',
+                borderWidth: 1,
+                padding: 10,
+                callbacks: { label: ctx => ctx.raw + '% Readiness' }
+              }
+            }
+          }
+        });
+        return () => { if (chartRef.current) { chartRef.current.destroy(); chartRef.current = null; } };
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+      }, [skillKey]);
+
+      return (
+        <div className="w-full h-[240px] relative">
+          <canvas ref={canvasRef}></canvas>
+        </div>
+      );
+    }
+
+    // ===================== MONTH VIEW =====================
+    function MonthView({ phase, month, done, onToggle }) {
+      const isComplete = month.weeks.every(w => done[w.id]);
+      const quarterProj = QUARTER_PROJECTS[phase.quarterId];
+
+      return (
+        <div className="border border-zinc-800 rounded-xl overflow-hidden mb-6 bg-zinc-950 fade-in">
+          <div className="p-5 border-b border-zinc-800 flex justify-between items-start bg-zinc-900/50">
+            <div>
+              <div className="flex items-center gap-2 mb-2">
+                <span className="text-[10px] font-bold tracking-widest uppercase" style={{ color: phase.accent }}>
+                  Month {month.number}
+                </span>
+                <div className="w-1 h-1 rounded-full bg-zinc-700" />
+                <span className="text-[10px] text-zinc-500 uppercase tracking-widest">{phase.title}</span>
+              </div>
+              <h3 className="text-xl font-bold text-zinc-100">{month.title}</h3>
+              <p className="text-sm text-zinc-400 mt-2 leading-relaxed max-w-2xl">{month.intro}</p>
+            </div>
+            {isComplete && (
+              <div className="bg-green-500/10 text-green-400 px-3 py-1 rounded text-xs font-bold tracking-wider uppercase border border-green-500/20">
+                Complete
+              </div>
+            )}
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-3 divide-y lg:divide-y-0 lg:divide-x divide-zinc-800">
+            <div className="p-5 lg:col-span-2 space-y-8">
+              <div>
+                <h4 className="text-sm font-semibold text-zinc-200 mb-3 border-b border-zinc-800/60 pb-2">Knowledge Acquisition & Weekly Tasks</h4>
+                <div className="space-y-1">
+                  {month.weeks.map(week => (
+                    <WeekItem key={week.id} week={week} done={done} onToggle={onToggle} />
+                  ))}
+                </div>
+              </div>
+
+              {month.resources && month.resources.length > 0 && (
+                <div>
+                  <h4 className="text-sm font-semibold text-zinc-200 mb-3 border-b border-zinc-800/60 pb-2">Mandatory Resources</h4>
+                  <ul className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {month.resources.map((r, i) => {
+                      const parts = r.split('|');
+                      const type = parts[0] || 'Link';
+                      const text = parts[1] || r;
+                      const linkHtml = parts[2] || '';
+                      return (
+                        <li key={i} className="flex flex-col p-4 rounded-lg border border-zinc-800 bg-zinc-900/40 hover:bg-zinc-900 transition-colors">
+                          <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded border border-zinc-700 bg-zinc-800 text-zinc-400 inline-block w-max mb-2">
+                            {type}
+                          </span>
+                          <span className="text-sm text-zinc-200 font-medium mb-3 flex-grow">{text}</span>
+                          {linkHtml && (
+                            <div className="text-xs font-bold border-t border-zinc-800/60 pt-2 mt-auto [&_a]:text-cyan-400 hover:[&_a]:text-cyan-300 [&_a]:transition-colors" 
+                                 dangerouslySetInnerHTML={{ __html: linkHtml }} />
+                          )}
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </div>
+              )}
+
+              {month.milestone && (
+                <div className="bg-zinc-900/60 rounded-lg p-4 border border-zinc-800 border-l-2" style={{ borderLeftColor: phase.accent }}>
+                  <h5 className="text-[10px] font-bold uppercase tracking-widest mb-2" style={{ color: phase.accent }}>
+                    Capstone Milestone
+                  </h5>
+                  <p className="text-zinc-200 font-medium text-sm leading-relaxed">
+                    <span className="mr-2 opacity-60">✓</span>{month.milestone}
+                  </p>
+                </div>
+              )}
+            </div>
+
+            <div className="p-5 space-y-6 bg-zinc-900/20">
+              {month.skills && (
+                <div>
+                  <h4 className="text-sm font-semibold text-zinc-200 mb-1 text-center">Skill Readiness</h4>
+                  <p className="text-[11px] text-zinc-500 text-center mb-2">Progression towards Architect profile</p>
+                  <SkillChart skills={month.skills} />
+                </div>
+              )}
+
+              {month.context && (
+                <div className="bg-cyan-500/5 border border-cyan-500/20 rounded-xl p-4">
+                  <h4 className="text-[10px] font-bold uppercase tracking-widest text-cyan-400 mb-2">Why this matters</h4>
+                  <p className="text-xs text-zinc-300 leading-relaxed">{month.context}</p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // ===================== QUARTER VIEW =====================
+    function QuarterView({ phase }) {
+      const qp = QUARTER_PROJECTS[phase.quarterId];
+      if (!qp) return null;
+      return (
+        <div className="fade-in w-full">
+          <div className="mb-8">
+            <span className="text-[10px] font-bold tracking-widest uppercase" style={{ color: phase.accent }}>
+              {qp.quarterLabel}
+            </span>
+            <h2 className="text-2xl font-black text-zinc-50 mt-1 tracking-tight">{qp.title}</h2>
+            <p className="text-zinc-400 mt-3 text-sm leading-relaxed max-w-3xl">{qp.desc}</p>
+          </div>
+
+          <div className="bg-zinc-950 border border-zinc-800 rounded-xl overflow-hidden relative shadow-2xl">
+            <div className="absolute top-0 left-0 w-full h-1" style={{ background: phase.accent }} />
+            <div className="p-6 space-y-8">
+
+              {/* Monthly milestones summary */}
+              <div>
+                <h3 className="text-xs font-bold text-zinc-300 uppercase tracking-widest mb-4 border-b border-zinc-800 pb-2">Monthly Milestones</h3>
+                <div className="space-y-3">
+                  {phase.months.map(m => (
+                    <div key={m.id} className="flex items-start gap-3">
+                      <span className="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 text-[10px] font-bold border mt-0.5"
+                        style={{ borderColor: phase.accent, color: phase.accent }}>
+                        {m.number}
+                      </span>
+                      <div>
+                        <p className="text-xs font-semibold text-zinc-300">{m.title}</p>
+                        <p className="text-xs text-zinc-500 mt-0.5 leading-relaxed">{m.milestone}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Implementation & Testing */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <div>
+                  <h3 className="text-xs font-bold text-zinc-300 uppercase tracking-widest mb-4 border-b border-zinc-800 pb-2 flex items-center gap-2">
+                    <span className="text-zinc-500">⚙</span> Architecture & Implementation
+                  </h3>
+                  <ul className="space-y-3 list-none">
+                    {qp.implementation.map((item, i) => (
+                      <li key={i} className="text-xs text-zinc-400 font-mono leading-relaxed [&_strong]:text-zinc-200 [&_a]:text-cyan-400 hover:[&_a]:text-cyan-300"
+                          dangerouslySetInnerHTML={{ __html: item }} />
+                    ))}
+                  </ul>
+                </div>
+                <div>
+                  <h3 className="text-xs font-bold text-zinc-300 uppercase tracking-widest mb-4 border-b border-zinc-800 pb-2 flex items-center gap-2">
+                    <span className="text-zinc-500">⚡</span> Testing & Validation
+                  </h3>
+                  <ul className="space-y-3 list-none">
+                    {qp.testing.map((item, i) => (
+                      <li key={i} className="text-xs text-zinc-400 font-mono leading-relaxed [&_strong]:text-zinc-200 [&_a]:text-cyan-400 hover:[&_a]:text-cyan-300"
+                          dangerouslySetInnerHTML={{ __html: item }} />
+                    ))}
+                  </ul>
+                </div>
+              </div>
+
+              {/* Grading rubric */}
+              <div className="bg-green-500/5 border border-green-500/20 rounded-lg p-5">
+                <h3 className="text-[10px] font-black text-green-400 uppercase tracking-widest mb-2 flex items-center gap-2">
+                  <span>🎯</span> Tape-Out Standard Grading Rubric
+                </h3>
+                <p className="text-xs text-green-200/80 font-mono leading-relaxed">{qp.grading}</p>
+              </div>
+
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    function PhaseAccordion({ phase, done, onToggle }) {
+      const [open, setOpen] = useState(false);
+      const stats = phaseStats(phase, done);
+      const isComplete = stats.pct === 100;
+
+      return (
+        <div className={`border rounded-xl overflow-hidden transition-colors ${isComplete ? 'border-green-500/30' : 'border-zinc-800'}`}>
+          <button
+            onClick={() => setOpen(o => !o)}
+            className="w-full flex items-center gap-4 p-5 hover:bg-zinc-900/50 transition-colors text-left"
+          >
+            <div
+              className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 text-sm font-bold text-black"
+              style={{ background: isComplete ? '#4ade80' : phase.accent }}
+            >
+              {phase.number}
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 flex-wrap mb-1.5">
+                <span className="font-semibold text-zinc-100">{phase.title}</span>
+                <span className="text-xs text-zinc-500">{phase.subtitle}</span>
+              </div>
+              <ProgressBar pct={stats.pct} color={isComplete ? '#4ade80' : phase.accent} />
+            </div>
+            <div className="flex-shrink-0 text-right ml-4">
+              <span className={`text-sm font-semibold ${isComplete ? 'text-green-400' : 'text-zinc-400'}`}>
+                {stats.completed}/{stats.total}
+              </span>
+              <div className={`text-lg transition-transform duration-200 mt-1 ${open ? 'rotate-180' : ''} text-zinc-500`}>
+                ↓
+              </div>
+            </div>
+          </button>
+
+          {open && (
+            <div className="border-t border-zinc-800 bg-zinc-950/50 fade-in p-5">
+              <p className="text-sm text-zinc-400 mb-6">{phase.goal}</p>
+              {phase.months.map(month => (
+                <MonthView key={month.id} phase={phase} month={month} done={done} onToggle={onToggle} />
+              ))}
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    // ===================== TABS =====================
+    function OverviewTab({ done, doneMap, total }) {
+      const pct = Math.round(done / total * 100);
+      return (
+        <div className="fade-in w-full">
+          <div className="mb-10">
+            <span className="text-[11px] font-semibold tracking-widest uppercase text-zinc-500">Hybrid Hardware Roles @ NVIDIA</span>
+            <h1 className="text-3xl font-bold text-zinc-50 mt-2 leading-tight">Strategic Architect Roadmap</h1>
+            <p className="text-zinc-400 mt-3 leading-relaxed max-w-xl">
+              A 12-month structured plan to build the skills and portfolio necessary to land a hybrid architecture and physical design role. Select any month from the sidebar to dive in.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+            <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-5 flex items-center gap-4 md:col-span-1">
+              <div className="relative">
+                <ProgressRing pct={pct} size={72} stroke={5} color="#22d3ee" />
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <span className="text-sm font-bold text-zinc-100">{pct}%</span>
+                </div>
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-zinc-50">{done}<span className="text-zinc-500 text-base font-normal">/{total}</span></p>
+                <p className="text-xs text-zinc-500 mt-0.5">weeks complete</p>
+              </div>
+            </div>
+
+            {PHASES.map(phase => {
+              const s = phaseStats(phase, doneMap);
+              return (
+                <div key={phase.id} className="bg-zinc-900 border border-zinc-800 rounded-xl p-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className="w-2 h-2 rounded-full" style={{ background: phase.accent }} />
+                    <span className="text-xs font-medium text-zinc-300">Phase {phase.number}</span>
+                  </div>
+                  <p className="text-xs text-zinc-500 mb-3 leading-relaxed">{phase.title}</p>
+                  <ProgressBar pct={s.pct} color={phase.accent} thin />
+                  <p className="text-[11px] text-zinc-500 mt-1.5">{s.completed}/{s.total} weeks</p>
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            {[
+              { label: 'Courses', value: '10', sub: 'across UMich, MIT, Stanford' },
+              { label: 'Projects', value: '3', sub: 'portfolio deliverables' },
+              { label: 'Weeks', value: '48', sub: 'structured learning' },
+              { label: 'Phases', value: '4', sub: 'from theory to interview' },
+            ].map(s => (
+              <div key={s.label} className="bg-zinc-900 border border-zinc-800 rounded-xl p-4">
+                <p className="text-2xl font-bold text-zinc-50">{s.value}</p>
+                <p className="text-xs font-medium text-zinc-300 mt-0.5">{s.label}</p>
+                <p className="text-[11px] text-zinc-600 mt-1">{s.sub}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+    }
+
+    function FoundationsTab() {
+      return (
+        <div className="fade-in w-full">
+          <div className="mb-8">
+            <span className="text-[11px] font-semibold tracking-widest uppercase text-zinc-500">Section 1</span>
+            <h2 className="text-2xl font-bold text-zinc-50 mt-1">Core Academic Foundations</h2>
+            <p className="text-zinc-400 mt-2 text-sm leading-relaxed">A mathematically rigorous understanding of the underlying physics of computation is non-negotiable.</p>
+          </div>
+          <div className="space-y-4">
+            {FOUNDATIONS.map(f => (
+              <div key={f.id} className="bg-zinc-900 border border-zinc-800 rounded-xl p-5">
+                <div className="flex items-start gap-3 mb-4">
+                  <span className="text-xl text-zinc-500 mt-0.5">{f.icon}</span>
+                  <h3 className="text-base font-semibold text-zinc-100">{f.title}</h3>
+                </div>
+                <div className="space-y-3 mb-4">
+                  {f.courses.map(c => (
+                    <div key={c.name} className="flex items-start gap-3">
+                      <div className="w-1 h-1 rounded-full bg-zinc-600 mt-2 flex-shrink-0" />
+                      <div>
+                        <a href={c.href} target="_blank" rel="noopener noreferrer"
+                          className="text-sm font-medium text-cyan-400 hover:text-cyan-300 transition-colors">
+                          {c.name}
+                        </a>
+                        <p className="text-xs text-zinc-500 mt-0.5 leading-relaxed">{c.desc}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div className="bg-black/40 border border-zinc-800/60 rounded-lg px-4 py-3">
+                  <span className="text-[10px] font-bold tracking-widest uppercase text-zinc-600">Why: </span>
+                  <span className="text-xs text-zinc-400">{f.why}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+    }
+
+    function ProjectsTab() {
+      return (
+        <div className="fade-in w-full">
+          <div className="mb-8">
+            <span className="text-[11px] font-semibold tracking-widest uppercase text-zinc-500">Section 2</span>
+            <h2 className="text-2xl font-bold text-zinc-50 mt-1">High-Impact Portfolio Projects</h2>
+            <p className="text-zinc-400 mt-2 text-sm leading-relaxed">Demonstrable execution targeting the intersection of parallel architecture, physical design, and automation.</p>
+          </div>
+          <div className="space-y-5">
+            {PROJECTS.map(p => (
+              <div key={p.id} className="bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden">
+                <div className="flex items-center gap-4 p-5 border-b border-zinc-800/60">
+                  <span className="text-3xl font-black text-zinc-700">{p.number}</span>
+                  <div>
+                    <div className="flex items-center gap-2 mb-1">
+                      <h3 className="text-base font-semibold text-zinc-100">{p.title}</h3>
+                    </div>
+                    <Tag>{p.tag}</Tag>
+                  </div>
+                </div>
+                <div className="p-5 space-y-4">
+                  <div>
+                    <span className="text-[10px] font-bold tracking-widest uppercase text-zinc-600">Objective</span>
+                    <p className="text-sm text-zinc-300 mt-1.5 leading-relaxed">{p.objective}</p>
+                  </div>
+                  <div>
+                    <span className="text-[10px] font-bold tracking-widest uppercase text-zinc-600">Execution Strategy</span>
+                    <p className="text-sm text-zinc-400 mt-1.5 leading-relaxed">{p.strategy}</p>
+                  </div>
+                  <div className="bg-black/30 border border-zinc-800/50 rounded-lg px-4 py-3">
+                    <span className="text-[10px] font-bold tracking-widest uppercase text-zinc-600">Strategic Value: </span>
+                    <span className="text-xs text-zinc-400">{p.value}</span>
+                  </div>
+                  {p.links.length > 0 && (
+                    <div className="flex gap-2 flex-wrap">
+                      {p.links.map(l => (
+                        <a key={l.href} href={l.href} target="_blank" rel="noopener noreferrer"
+                          className="text-xs text-cyan-400 hover:text-cyan-300 underline underline-offset-2 transition-colors">
+                          {l.label} ↗
+                        </a>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+    }
+
+    function RoadmapTab({ done, onToggle }) {
+      const total = 48;
+      const completedCount = Object.values(done).filter(Boolean).length;
+      const pct = Math.round(completedCount / total * 100);
+      return (
+        <div className="fade-in w-full">
+          <div className="mb-6">
+            <span className="text-[11px] font-semibold tracking-widest uppercase text-zinc-500">Section 3</span>
+            <h2 className="text-2xl font-bold text-zinc-50 mt-1">12-Month Weekly Roadmap</h2>
+            <p className="text-zinc-400 mt-2 text-sm">Click any week to mark it complete. Progress is saved automatically.</p>
+          </div>
+
+          <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-5 mb-6">
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-sm font-medium text-zinc-300">Overall Progress</span>
+              <span className="text-sm font-bold text-zinc-100">{completedCount} <span className="text-zinc-500 font-normal">/ {total} weeks</span></span>
+            </div>
+            <ProgressBar pct={pct} color="#22d3ee" />
+            <div className="flex justify-between mt-2">
+              <span className="text-[11px] text-zinc-600">0%</span>
+              <span className="text-[11px] font-semibold text-cyan-400">{pct}% complete</span>
+              <span className="text-[11px] text-zinc-600">100%</span>
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            {PHASES.map(phase => (
+              <PhaseAccordion
+                key={phase.id}
+                phase={phase}
+                done={done}
+                onToggle={onToggle}
+              />
+            ))}
+          </div>
+        </div>
+      );
+    }
+
+    function InterviewTab() {
+      return (
+        <div className="fade-in w-full">
+          <div className="mb-8">
+            <span className="text-[11px] font-semibold tracking-widest uppercase text-zinc-500">Section 4</span>
+            <h2 className="text-2xl font-bold text-zinc-50 mt-1">Interview Preparation Tactics</h2>
+            <p className="text-zinc-400 mt-2 text-sm leading-relaxed">NVIDIA evaluates four core competency pillars for hybrid architecture and physical design roles.</p>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {INTERVIEW_AREAS.map(area => (
+              <div key={area.id} className="bg-zinc-900 border border-zinc-800 rounded-xl p-5">
+                <div className="flex items-start justify-between mb-4">
+                  <h3 className="text-base font-semibold text-zinc-100">{area.title}</h3>
+                  <Tag>{area.tag}</Tag>
+                </div>
+                <ul className="space-y-2.5">
+                  {area.points.map((p, i) => (
+                    <li key={i} className="flex items-start gap-2.5">
+                      <span className="text-zinc-600 text-sm mt-0.5 flex-shrink-0">—</span>
+                      <span className="text-sm text-zinc-400 leading-relaxed">{p}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+    }
+
+    function CitationsTab() {
+      return (
+        <div className="fade-in w-full">
+          <div className="mb-8">
+            <span className="text-[11px] font-semibold tracking-widest uppercase text-zinc-500">References</span>
+            <h2 className="text-2xl font-bold text-zinc-50 mt-1">Works Cited</h2>
+          </div>
+          <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-5">
+            <ol className="space-y-3">
+              {CITATIONS.map((c, i) => (
+                <li key={i} className="flex items-baseline gap-3">
+                  <span className="text-[11px] text-zinc-600 w-5 flex-shrink-0 text-right font-mono">{i + 1}.</span>
+                  <a
+                    href={c.href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-sm text-cyan-400 hover:text-cyan-300 transition-colors leading-relaxed"
+                  >
+                    {c.label}
+                  </a>
+                </li>
+              ))}
+            </ol>
+          </div>
+        </div>
+      );
+    }
+
+    // ===================== SIDEBAR =====================
+    const TOP_NAV = [
+      { id: 'overview',    label: 'Overview',      icon: '◈' },
+    ];
+    const BOT_NAV = [
+      { id: 'foundations', label: 'Foundations',   icon: '⬡' },
+      { id: 'projects',    label: 'Projects',      icon: '◆' },
+      { id: 'interview',   label: 'Interview Prep', icon: '◇' },
+      { id: 'citations',   label: 'Works Cited',    icon: '○' },
+    ];
+
+    function NavBtn({ id, label, icon, active, onClick }) {
+      return (
+        <button
+          onClick={onClick}
+          className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm transition-colors text-left ${
+            active ? 'text-zinc-100 bg-zinc-800/70' : 'text-zinc-500 hover:text-zinc-300 hover:bg-zinc-900/60'
+          }`}
+        >
+          <span className="text-sm leading-none flex-shrink-0">{icon}</span>
+          <span className="font-medium truncate">{label}</span>
+          {active && <div className="ml-auto w-1 h-4 bg-cyan-400 rounded-full flex-shrink-0" />}
+        </button>
+      );
+    }
+
+    function Sidebar({ tab, setTab, totalDone, totalWeeks, done }) {
+      const pct = Math.round(totalDone / totalWeeks * 100);
+      const [expandedPhases, setExpandedPhases] = useState({});
+      return (
+        <aside className="w-60 flex-shrink-0 bg-zinc-950 border-r border-zinc-800 flex flex-col h-full overflow-hidden">
+
+          {/* Logo */}
+          <div className="px-4 py-4 border-b border-zinc-800 flex-shrink-0">
+            <div className="flex items-center gap-2">
+              <div className="w-7 h-7 bg-cyan-400 rounded flex items-center justify-center flex-shrink-0">
+                <span className="text-black font-black text-xs">N</span>
+              </div>
+              <div>
+                <p className="text-xs font-bold text-zinc-100 leading-none">Project Hopper</p>
+                <p className="text-[10px] text-zinc-500 mt-0.5">NVIDIA Architect Roadmap</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Overview */}
+          <div className="pt-1 flex-shrink-0">
+            {TOP_NAV.map(n => (
+              <NavBtn key={n.id} {...n} active={tab === n.id} onClick={() => setTab(n.id)} />
+            ))}
+          </div>
+
+          {/* Roadmap timeline — scrollable, sits right below Overview */}
+          <div className="border-t border-zinc-800/60 flex-1 overflow-y-auto">
+            <div className="px-4 pt-3 pb-1">
+              <span className="text-[9px] font-bold tracking-widest uppercase text-zinc-600">12-Month Roadmap</span>
+            </div>
+            {PHASES.map(phase => {
+              const stats = phaseStats(phase, done);
+              const isPhaseComplete = stats.pct === 100;
+              const isExpanded = expandedPhases[phase.id];
+              return (
+                <div key={phase.id} className="mb-1">
+                  {/* Phase header — clickable to expand */}
+                  <button
+                    onClick={() => setExpandedPhases(prev => ({ ...prev, [phase.id]: !prev[phase.id] }))}
+                    className="w-full px-4 py-2 text-left hover:bg-zinc-900/40 transition-colors"
+                  >
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-[9px] font-bold tracking-widest uppercase" style={{ color: isPhaseComplete ? '#4ade80' : phase.accent }}>
+                        {phase.title}
+                      </span>
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[9px] text-zinc-600">{stats.completed}/{stats.total}</span>
+                        <span className={`text-zinc-600 text-[10px] transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`}>▾</span>
+                      </div>
+                    </div>
+                    <ProgressBar pct={stats.pct} color={isPhaseComplete ? '#4ade80' : phase.accent} thin />
+                  </button>
+                  {/* Month buttons + Capstone — only when expanded */}
+                  {isExpanded && phase.months.map(month => {
+                    const label = month.title.split(':')[0];
+                    const allDone = month.weeks.every(w => done[w.id]);
+                    const isActive = tab === month.id;
+                    return (
+                      <button
+                        key={month.id}
+                        onClick={() => setTab(month.id)}
+                        className={`w-full flex items-center gap-2 pl-6 pr-3 py-1.5 text-left transition-colors ${
+                          isActive ? 'bg-zinc-800/70 text-zinc-100' : 'text-zinc-500 hover:text-zinc-300 hover:bg-zinc-900/60'
+                        }`}
+                      >
+                        <span className={`w-[18px] h-[18px] rounded-full flex items-center justify-center flex-shrink-0 text-[9px] font-bold border ${
+                          allDone
+                            ? 'bg-green-500 border-green-500 text-black'
+                            : isActive
+                            ? 'border-zinc-500 text-zinc-300'
+                            : 'border-zinc-700 text-zinc-600'
+                        }`}>
+                          {month.number}
+                        </span>
+                        <span className={`text-[11px] font-medium truncate ${allDone ? 'text-green-400' : ''}`}>
+                          {label}
+                        </span>
+                        {isActive && <div className="ml-auto w-0.5 h-3 bg-cyan-400 rounded-full flex-shrink-0" />}
+                      </button>
+                    );
+                  })}
+                  {/* Capstone project button — only when expanded */}
+                  {isExpanded && (() => {
+                    const capId = phase.quarterId.toLowerCase();
+                    const isActive = tab === capId;
+                    return (
+                      <button
+                        key={capId}
+                        onClick={() => setTab(capId)}
+                        className={`w-full flex items-center gap-2 pl-6 pr-3 py-1.5 text-left transition-colors mb-2 ${
+                          isActive ? 'bg-zinc-800/70' : 'text-zinc-600 hover:text-zinc-300 hover:bg-zinc-900/60'
+                        }`}
+                      >
+                        <span className="text-[9px] flex-shrink-0" style={{ color: isActive ? phase.accent : '#52525b' }}>◆</span>
+                        <span className="text-[11px] font-semibold truncate italic" style={{ color: isActive ? phase.accent : '#52525b' }}>
+                          Capstone Project
+                        </span>
+                        {isActive && <div className="ml-auto w-0.5 h-3 rounded-full flex-shrink-0" style={{ background: phase.accent }} />}
+                      </button>
+                    );
+                  })()}
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Bottom nav — Foundations, Projects, Interview, Citations */}
+          <div className="border-t border-zinc-800/60 flex-shrink-0 pb-1">
+            {BOT_NAV.map(n => (
+              <NavBtn key={n.id} {...n} active={tab === n.id} onClick={() => setTab(n.id)} />
+            ))}
+          </div>
+
+          {/* Overall progress */}
+          <div className="px-4 py-3 border-t border-zinc-800 flex-shrink-0">
+            <div className="flex items-center justify-between mb-1.5">
+              <span className="text-[9px] font-bold tracking-widest uppercase text-zinc-600">Overall Progress</span>
+              <span className="text-[10px] font-semibold text-zinc-400">{pct}%</span>
+            </div>
+            <ProgressBar pct={pct} color="#22d3ee" thin />
+            <p className="text-[9px] text-zinc-600 mt-1">{totalDone} / {totalWeeks} weeks complete</p>
+          </div>
+        </aside>
+      );
+    }
+
+    // ===================== APP =====================
+    function App() {
+      const [tab, setTab] = useState('overview');
+      const [done, setDone] = useState(() => load('completed-weeks', {}));
+
+      useEffect(() => save('completed-weeks', done), [done]);
+
+      const toggleWeek = useCallback((id) => {
+        setDone(prev => ({ ...prev, [id]: !prev[id] }));
+      }, []);
+
+      const totalDone = Object.values(done).filter(Boolean).length;
+
+      // Resolve month or quarter view from tab id
+      let activePhase = null, activeMonth = null, activeQuarterPhase = null;
+      for (const p of PHASES) {
+        if (tab === p.quarterId.toLowerCase()) { activeQuarterPhase = p; }
+        for (const m of p.months) {
+          if (m.id === tab) { activePhase = p; activeMonth = m; }
+        }
+      }
+
+      return (
+        <div className="flex h-screen bg-black text-zinc-100 overflow-hidden font-sans antialiased">
+          <Sidebar tab={tab} setTab={setTab} totalDone={totalDone} totalWeeks={48} done={done} />
+          <main className="flex-1 overflow-y-auto h-full">
+            <div className="p-6">
+              {tab === 'overview'    && <OverviewTab done={totalDone} doneMap={done} total={48} />}
+              {tab === 'foundations' && <FoundationsTab />}
+              {tab === 'projects'    && <ProjectsTab />}
+              {tab === 'interview'   && <InterviewTab />}
+              {tab === 'citations'   && <CitationsTab />}
+              {activePhase && activeMonth && (
+                <MonthView phase={activePhase} month={activeMonth} done={done} onToggle={toggleWeek} />
+              )}
+              {activeQuarterPhase && (
+                <QuarterView phase={activeQuarterPhase} />
+              )}
+            </div>
+          </main>
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>
