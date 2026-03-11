@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>NVIDIA Architect Roadmap</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%2322d3ee'/><text x='50%25' y='50%25' dominant-baseline='central' text-anchor='middle' font-family='sans-serif' font-weight='900' font-size='20' fill='black'>N</text></svg>">
   <script src="https://cdn.tailwindcss.com"></script>
   <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
@@ -1002,123 +1003,6 @@
         </div>
       );
     }
-            <div className="bg-zinc-900/60 border-b border-zinc-800 p-5 flex items-start gap-4">
-              <div className="w-8 h-8 rounded bg-zinc-800 border border-zinc-700 flex items-center justify-center flex-shrink-0 mt-0.5">
-                <span style={{ color: phase.accent }}>🔗</span>
-              </div>
-              <div>
-                <h4 className="text-[10px] font-bold tracking-widest uppercase text-zinc-400 mb-1">Superchip Integration Node</h4>
-                <p className="text-xs text-zinc-300 leading-relaxed">{qp.integrationTarget}</p>
-              </div>
-            </div>
-
-            <div className="p-8 space-y-10">
-
-              {/* Grid 1: Architecture & Step-by-Step */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
-                
-                {/* Architecture Specs */}
-                <div>
-                  <h3 className="text-[11px] font-bold text-zinc-300 uppercase tracking-widest mb-4 border-b border-zinc-800 pb-2 flex items-center gap-2">
-                    <span className="text-cyan-400 text-base">⬡</span> Microarchitecture Specs
-                  </h3>
-                  <ul className="space-y-3 list-none">
-                    {qp.architectureSpecs.map((item, i) => {
-                      const [title, desc] = item.split(': ');
-                      return (
-                        <li key={i} className="text-[13px] text-zinc-400 leading-relaxed">
-                          <span className="font-semibold text-zinc-200">{title}:</span> {desc}
-                        </li>
-                      );
-                    })}
-                  </ul>
-                </div>
-
-                {/* Step-by-Step Implementation */}
-                <div>
-                  <h3 className="text-[11px] font-bold text-zinc-300 uppercase tracking-widest mb-4 border-b border-zinc-800 pb-2 flex items-center gap-2">
-                    <span className="text-purple-400 text-base">📋</span> Step-by-Step Implementation
-                  </h3>
-                  <div className="space-y-5">
-                    {qp.stepByStepImplementation.map((step, i) => (
-                      <div key={i} className="relative pl-4 border-l-2 border-zinc-800/80">
-                        <div className="absolute -left-[5px] top-1.5 w-2 h-2 rounded-full bg-zinc-700" />
-                        <h4 className="text-xs font-bold text-zinc-200 mb-2">{step.phase}</h4>
-                        <ul className="space-y-1.5">
-                          {step.details.map((detail, j) => (
-                            <li key={j} className="text-[12px] text-zinc-400 leading-relaxed flex items-start gap-2">
-                              <span className="text-zinc-600 mt-0.5">-</span> {detail}
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-              </div>
-
-              {/* Grid 2: Testing & Metrics */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 bg-zinc-900/30 p-6 rounded-lg border border-zinc-800/50">
-                
-                {/* Verification */}
-                <div>
-                  <h3 className="text-[11px] font-bold text-zinc-300 uppercase tracking-widest mb-4 border-b border-zinc-800/50 pb-2 flex items-center gap-2">
-                    <span className="text-green-400 text-base">🛡️</span> Testing & Validation Protocol
-                  </h3>
-                  <ul className="space-y-3 list-none">
-                    {qp.verificationAndTesting.map((item, i) => {
-                       const [title, desc] = item.split(': ');
-                       return (
-                         <li key={i} className="text-[13px] text-zinc-400 leading-relaxed">
-                           <span className="font-semibold text-green-400/80">{title}:</span> {desc}
-                         </li>
-                       );
-                    })}
-                  </ul>
-                </div>
-
-                {/* Metrics & References */}
-                <div className="space-y-8">
-                  <div>
-                    <h3 className="text-[11px] font-bold text-zinc-300 uppercase tracking-widest mb-4 border-b border-zinc-800/50 pb-2 flex items-center gap-2">
-                      <span className="text-orange-400 text-base">⚡</span> Required Metrics (PPA)
-                    </h3>
-                    <div className="space-y-3">
-                      {qp.performanceMetrics.map((m, i) => (
-                        <div key={i} className="flex items-center justify-between border-b border-zinc-800/50 pb-2 last:border-0">
-                          <div>
-                            <p className="text-[11px] font-bold text-zinc-200 uppercase tracking-wider">{m.label}</p>
-                            <p className="text-[11px] text-zinc-500">{m.desc}</p>
-                          </div>
-                          <span className="text-xs font-mono font-bold text-orange-400 bg-orange-400/10 px-2.5 py-1 rounded border border-orange-400/20">
-                            {m.value}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div>
-                    <h3 className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-3">Mandatory References</h3>
-                    <div className="flex flex-col gap-2">
-                      {qp.references.map(l => (
-                        <a key={l.href} href={l.href} target="_blank" rel="noopener noreferrer"
-                          className="text-xs text-cyan-400 hover:text-cyan-300 flex items-center gap-1 transition-colors w-max">
-                          {l.label} <span className="text-[10px]">↗</span>
-                        </a>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-
-              </div>
-
-            </div>
-          </div>
-        </div>
-      );
-    }
 
     function PhaseAccordion({ phase, done, onToggle }) {
       const [open, setOpen] = useState(false);
@@ -1515,6 +1399,9 @@
       const pct = Math.round(totalDone / totalWeeks * 100);
       const [expandedPhases, setExpandedPhases] = useState({});
       const [projectsExpanded, setProjectsExpanded] = useState(false);
+      const [referenceExpanded, setReferenceExpanded] = useState(false);
+      const refIds = BOT_NAV.map(n => n.id);
+      const refActive = refIds.includes(tab);
       return (
         <aside className="w-60 flex-shrink-0 bg-zinc-950 border-r border-zinc-800 flex flex-col h-full overflow-hidden">
 
@@ -1670,11 +1557,41 @@
             )}
           </div>
 
-          {/* Bottom nav — Foundations, Interview, Citations */}
-          <div className="border-t border-zinc-800/60 flex-shrink-0 pb-1">
-            {BOT_NAV.map(n => (
-              <NavBtn key={n.id} {...n} active={tab === n.id} onClick={() => setTab(n.id)} />
-            ))}
+          {/* Reference section — collapsible */}
+          <div className="border-t border-zinc-800/60 flex-shrink-0">
+            <button
+              onClick={() => setReferenceExpanded(p => !p)}
+              className="w-full px-4 py-2.5 text-left hover:bg-zinc-900/40 transition-colors flex items-center gap-3"
+            >
+              <span className="text-sm leading-none flex-shrink-0 text-zinc-500">○</span>
+              <span className={`text-sm font-medium flex-1 truncate ${refActive ? 'text-zinc-100' : 'text-zinc-500 hover:text-zinc-300'}`}>
+                Reference
+              </span>
+              <span className={`text-zinc-600 text-[10px] transition-transform duration-200 flex-shrink-0 ${referenceExpanded ? 'rotate-180' : ''}`}>▾</span>
+              {refActive && !referenceExpanded && (
+                <div className="w-1 h-4 bg-cyan-400 rounded-full flex-shrink-0" />
+              )}
+            </button>
+            {referenceExpanded && (
+              <div className="pb-1">
+                {BOT_NAV.map(n => {
+                  const isActive = tab === n.id;
+                  return (
+                    <button
+                      key={n.id}
+                      onClick={() => setTab(n.id)}
+                      className={`w-full flex items-center gap-2 pl-6 pr-3 py-1.5 text-left transition-colors ${
+                        isActive ? 'bg-zinc-800/70 text-zinc-100' : 'text-zinc-500 hover:text-zinc-300 hover:bg-zinc-900/60'
+                      }`}
+                    >
+                      <span className="text-[9px] text-zinc-600 flex-shrink-0">{n.icon}</span>
+                      <span className="text-[11px] font-medium truncate">{n.label}</span>
+                      {isActive && <div className="ml-auto w-0.5 h-3 bg-cyan-400 rounded-full flex-shrink-0" />}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
           </div>
 
           {/* Overall progress */}
