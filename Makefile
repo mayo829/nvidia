@@ -38,11 +38,11 @@ programs/%.dump: programs/%.elf
 
 # Normal build
 obj_dir/Vcpu:
-	verilator --cc --exe --build -j $(nproc) -Wall -Iverilog sim_main.cpp verilog/cpu.sv
+	verilator --cc --exe --build -j $(nproc) -Wall -Wno-UNUSEDSIGNAL -Wno-TIMESCALEMOD -Iverilog sim_main.cpp verilog/cpu.sv
 
 # Build + VCD tracing
 obj_dir/Vcpu_trace:
-	verilator --cc --exe --build -j $(nproc) -Wall --trace -Iverilog -CFLAGS "-DTRACE" sim_main.cpp verilog/cpu.sv -o Vcpu_trace
+	verilator --cc --exe --build -j $(nproc) -Wall --trace -Wno-UNUSEDSIGNAL -Wno-TIMESCALEMOD -Iverilog -CFLAGS "-DTRACE" sim_main.cpp verilog/cpu.sv -o Vcpu_trace
 
 # Run normal simulation
 run: programs/$(PROG).bin programs/$(PROG).dump obj_dir/Vcpu

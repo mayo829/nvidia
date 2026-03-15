@@ -222,6 +222,7 @@
 `define RV32_Bimm_12extract(instr) {``instr``[31], ``instr``[7], ``instr``[30:25], ``instr``[11:8]};
 `define RV32_Jimm_12extract(instr) {``instr``[12], ``instr``[20],``instr``[30:21] };
 
+/* verilator lint_off UNUSEDPARAM */
 localparam RV32_instr_width_gp    = 32;
 localparam RV32_reg_data_width_gp = 32;
 localparam RV32_reg_addr_width_gp = 5;
@@ -234,5 +235,6 @@ localparam RV32_Simm_width_gp     = 12;
 localparam RV32_Bimm_width_gp     = 12;
 localparam RV32_Uimm_width_gp     = 20;
 localparam RV32_Jimm_width_gp     = 20;
+/* verilator lint_on UNUSEDPARAM */
 
 `endif // __ISA_SVH__

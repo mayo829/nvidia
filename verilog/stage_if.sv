@@ -8,18 +8,17 @@ module stage_if (
     input  logic        rst_n,
     
     // Interface to Instruction Memory (simulated in testbench)
-    output logic [31:0] pc_out,
-    input  logic [31:0] instr_in,
+    output ADDR pc_out,
+    input  INST instr_in,
     
     // Interface to Decode Stage
-    output logic [31:0] if_pc,
-    output logic [31:0] if_instr
+    output IF_ID_PACKET if_packet
 );
 
     logic [31:0] pc_reg;
 
     // PC Register
-    always_ff @(posedge clk or negedge rst_n) begin
+    always_ff @(posedge clk) begin
         if (!rst_n) begin
             pc_reg <= 32'h0;
         end else begin
@@ -31,7 +30,9 @@ module stage_if (
     assign pc_out = pc_reg;
 
     // Pass the PC and fetched instruction down the pipeline
-    assign if_pc = pc_reg;
-    assign if_instr = instr_in;
+    assign if_packet.PC = pc_reg;
+    assign if_packet.NPC = pc_reg + 4;
+    assign if_packet.inst = instr_in;
+    assign if_packet.valid = `TRUE;
 
 endmodule
