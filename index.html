@@ -38,6 +38,8 @@
   <script type="text/babel">
     const { useState, useEffect, useCallback } = React;
 
+    const COMPLETED_WEEKS = {"w1":true,"w2":true};
+
     // ===================== DATA =====================
     const QUARTER_PROJECTS = {
       "Q1": {
@@ -1710,9 +1712,21 @@
     // ===================== APP =====================
     function App() {
       const [tab, setTab] = useState('overview');
-      const [done, setDone] = useState(() => load('completed-weeks', {}));
+      const [done, setDone] = useState(() => {
+        const local = load('completed-weeks', {});
+        return { ...local, ...COMPLETED_WEEKS };
+      });
 
-      useEffect(() => save('completed-weeks', done), [done]);
+      useEffect(() => {
+        save('completed-weeks', done);
+        if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+          fetch('/update', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(done)
+          }).catch(err => console.error('Failed to save to file:', err));
+        }
+      }, [done]);
 
       const toggleWeek = useCallback((id) => {
         setDone(prev => ({ ...prev, [id]: !prev[id] }));

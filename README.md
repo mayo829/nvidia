@@ -66,85 +66,85 @@ Academic credentials must be substantiated by demonstrable execution explicitly 
 **Goal:** Solidify computer architecture, digital logic, and physical design fundamentals.
 
 #### Month 1: Advanced Microarchitecture & Digital Logic
-*   **Week 1:** Review UMich EECS 370 [36] and 470 [81]. Implement a simple single-cycle MIPS/ARM processor in SystemVerilog.
-*   **Week 2:** Deep dive into Tomasulo's Algorithm, Reorder Buffers (ROB), and Register Renaming.
-*   **Week 3:** Study FSM optimization and state encoding. Write synthesizable RTL for a parameterized round-robin arbiter.
-*   **Week 4:** Study synchronizers and handshaking protocols. Design a robust Asynchronous FIFO in Verilog using Gray code pointers.
+- [ ] **Week 1:** Review UMich EECS 370 [36] and 470 [81]. Implement a simple single-cycle MIPS/ARM processor in SystemVerilog.
+- [ ] **Week 2:** Deep dive into Tomasulo's Algorithm, Reorder Buffers (ROB), and Register Renaming.
+- [ ] **Week 3:** Study FSM optimization and state encoding. Write synthesizable RTL for a parameterized round-robin arbiter.
+- [ ] **Week 4:** Study synchronizers and handshaking protocols. Design a robust Asynchronous FIFO in Verilog using Gray code pointers.
 
 #### Month 2: VLSI Systems & Physical Realities
-*   **Week 5:** Begin Stanford EE271 [47]. Calculate theoretical propagation delays for basic logic gates.
-*   **Week 6:** Master the method of Logical Effort [48]. Optimize a multi-stage decoding circuit purely through mathematical cell sizing.
-*   **Week 7:** Review setup time, hold time, and clock-to-Q equations. Practice drawing timing waveforms and manually calculating slack.
-*   **Week 8:** Review Stanford EE273 [49]. Understand transmission line physics, characteristic impedance, crosstalk, and the impact of simultaneous switching noise (SSN).
+- [ ] **Week 5:** Begin Stanford EE271 [47]. Calculate theoretical propagation delays for basic logic gates.
+- [ ] **Week 6:** Master the method of Logical Effort [48]. Optimize a multi-stage decoding circuit purely through mathematical cell sizing.
+- [ ] **Week 7:** Review setup time, hold time, and clock-to-Q equations. Practice drawing timing waveforms and manually calculating slack.
+- [ ] **Week 8:** Review Stanford EE273 [49]. Understand transmission line physics, characteristic impedance, crosstalk, and the impact of simultaneous switching noise (SSN).
 
 #### Month 3: Advanced Systems, Parallelism, & Coherence
-*   **Week 9:** Study MIT 6.5900 [82]. Diagram memory consistency models and explain false sharing.
-*   **Week 10:** Review SIMD, SIMT, and vector processing architectures [41].
-*   **Week 11:** Write a basic CUDA kernel (e.g., Matrix Multiplication) to understand thread blocks and warps mapping.
-*   **Week 12:** Phase 1 Consolidation. Complete a mock whiteboard interview focusing on OoO architecture and STA equations.
+- [ ] **Week 9:** Study MIT 6.5900 [82]. Diagram memory consistency models and explain false sharing.
+- [ ] **Week 10:** Review SIMD, SIMT, and vector processing architectures [41].
+- [ ] **Week 11:** Write a basic CUDA kernel (e.g., Matrix Multiplication) to understand thread blocks and warps mapping.
+- [ ] **Week 12:** Phase 1 Consolidation. Complete a mock whiteboard interview focusing on OoO architecture and STA equations.
 
 ### Phase 2: Architecture Modeling & Software Simulation (Months 4-6)
 **Goal:** Develop elite C++ skills and build cycle-accurate simulation infrastructure.
 
 #### Month 4: C++ Mastery & Simulator Scaffolding
-*   **Week 13:** Refresher on C++17/20 features (smart pointers, lambdas, concurrency). Setup build environment for Project 2. [73]
-*   **Week 14:** Study Stanford EE382C [55]. Implement basic C++ object models for Routers, Links, and Flits. Define a 2D-Mesh topology.
-*   **Week 15:** Study routing algorithms [83]. Code routing logic module within the simulator.
-*   **Week 16:** Study credit-based flow control [83]. Implement virtual channel buffer management.
+- [ ] **Week 13:** Refresher on C++17/20 features (smart pointers, lambdas, concurrency). Setup build environment for Project 2. [73]
+- [ ] **Week 14:** Study Stanford EE382C [55]. Implement basic C++ object models for Routers, Links, and Flits. Define a 2D-Mesh topology.
+- [ ] **Week 15:** Study routing algorithms [83]. Code routing logic module within the simulator.
+- [ ] **Week 16:** Study credit-based flow control [83]. Implement virtual channel buffer management.
 
 #### Month 5: Advanced Simulator Features
-*   **Week 17:** Implement an iSLIP or round-robin allocator in C++ for the router microarchitecture.
-*   **Week 18:** Build a traffic injection engine mimicking AI model communication bursts.
-*   **Week 19:** Add instrumentation to track average flit latency, network throughput, and buffer utilization metrics.
-*   **Week 20:** Run scaling experiments. Generate latency-throughput curves and write a technical whitepaper detailing architectural trade-offs.
+- [ ] **Week 17:** Implement an iSLIP or round-robin allocator in C++ for the router microarchitecture.
+- [ ] **Week 18:** Build a traffic injection engine mimicking AI model communication bursts.
+- [ ] **Week 19:** Add instrumentation to track average flit latency, network throughput, and buffer utilization metrics.
+- [ ] **Week 20:** Run scaling experiments. Generate latency-throughput curves and write a technical whitepaper detailing architectural trade-offs.
 
 #### Month 6: Deep Learning Architectures (Hardware/Software Co-design)
-*   **Week 21:** Study Stanford CS217 [51] and MIT 6.5930 [84]. Understand spatial architectures and MAC arrays.
-*   **Week 22:** Analyze how INT8 and FP4 precisions reduce area and power [51]. Draft the microarchitectural specification for Project 1.
-*   **Week 23:** Begin writing SystemVerilog for a parameterized systolic array [71], capable of zero-skipping.
-*   **Week 24:** Write a comprehensive testbench to verify the tensor accelerator with 100% functional coverage.
+- [ ] **Week 21:** Study Stanford CS217 [51] and MIT 6.5930 [84]. Understand spatial architectures and MAC arrays.
+- [ ] **Week 22:** Analyze how INT8 and FP4 precisions reduce area and power [51]. Draft the microarchitectural specification for Project 1.
+- [ ] **Week 23:** Begin writing SystemVerilog for a parameterized systolic array [71], capable of zero-skipping.
+- [ ] **Week 24:** Write a comprehensive testbench to verify the tensor accelerator with 100% functional coverage.
 
 ### Phase 3: Physical Design Execution & EDA Fluency (Months 7-9)
 **Goal:** Execute an end-to-end ASIC tapeout flow using Open-Source tools.
 
 #### Month 7: Logic Synthesis & Floorplanning
-*   **Week 25:** Install OpenLane EDA toolchain and SkyWater 130nm PDK [24]. Run the flow on a baseline design [31].
-*   **Week 26:** Push Systolic Array RTL through Yosys. Analyze gate-level netlist logic depth.
-*   **Week 27:** Utilize OpenROAD to define the silicon die area and pin placement [24]. Place memory macros to minimize wire length.
-*   **Week 28:** Design the Power Distribution Network (VDD/VSS rings and stripes) to prevent IR drop [30].
+- [ ] **Week 25:** Install OpenLane EDA toolchain and SkyWater 130nm PDK [24]. Run the flow on a baseline design [31].
+- [ ] **Week 26:** Push Systolic Array RTL through Yosys. Analyze gate-level netlist logic depth.
+- [ ] **Week 27:** Utilize OpenROAD to define the silicon die area and pin placement [24]. Place memory macros to minimize wire length.
+- [ ] **Week 28:** Design the Power Distribution Network (VDD/VSS rings and stripes) to prevent IR drop [30].
 
 #### Month 8: Placement, Clocking, & Routing
-*   **Week 29:** Execute global and detailed placement of standard cells. Adjust floorplan if routing congestion is too high.
-*   **Week 30:** Use TritonCTS [70] to synthesize a balanced clock tree.
-*   **Week 31:** Execute the routing phase [24]. Resolve routing violations, DRC errors, or shorts.
-*   **Week 32:** Extract resistance and capacitance values to prepare the SPEF file for physical timing analysis.
+- [ ] **Week 29:** Execute global and detailed placement of standard cells. Adjust floorplan if routing congestion is too high.
+- [ ] **Week 30:** Use TritonCTS [70] to synthesize a balanced clock tree.
+- [ ] **Week 31:** Execute the routing phase [24]. Resolve routing violations, DRC errors, or shorts.
+- [ ] **Week 32:** Extract resistance and capacitance values to prepare the SPEF file for physical timing analysis.
 
 #### Month 9: Timing Closure & Sign-off
-*   **Week 33:** Run post-route STA using OpenSTA [70] to identify Setup and Hold violations.
-*   **Week 34:** Perform Engineering Change Orders (ECOs) by upsizing cells or inserting delay buffers.
-*   **Week 35:** Use Magic to run final DRC and LVS checks [24].
-*   **Week 36:** Generate the final GDSII file. Document the PPA (Power, Performance, Area) trade-offs.
+- [ ] **Week 33:** Run post-route STA using OpenSTA [70] to identify Setup and Hold violations.
+- [ ] **Week 34:** Perform Engineering Change Orders (ECOs) by upsizing cells or inserting delay buffers.
+- [ ] **Week 35:** Use Magic to run final DRC and LVS checks [24].
+- [ ] **Week 36:** Generate the final GDSII file. Document the PPA (Power, Performance, Area) trade-offs.
 
 ### Phase 4: Advanced Packaging, Edge-of-Art Tech, & Interview Prep (Months 10-12)
 **Goal:** Master 2026 NVIDIA-specific architectures and conquer the interview crucible.
 
 #### Month 10: Thermal constraints & HBM Co-Design
-*   **Week 37:** Research HBM4 specifications and memory controller design [6]. Draft RTL for a simplified memory controller (Project 3).
-*   **Week 38:** Study TSMC's CoWoS-L and hybrid bonding techniques [32]. Write a simulation script evaluating dynamic power and thermal hotspots [85].
-*   **Week 39:** Analyze NVIDIA's Rubin whitepapers, specifically extreme codesign at the rack scale [6].
-*   **Week 40:** Research Co-Packaged Optics (CPO) and light-in/light-out systems replacing copper [62].
+- [ ] **Week 37:** Research HBM4 specifications and memory controller design [6]. Draft RTL for a simplified memory controller (Project 3).
+- [ ] **Week 38:** Study TSMC's CoWoS-L and hybrid bonding techniques [32]. Write a simulation script evaluating dynamic power and thermal hotspots [85].
+- [ ] **Week 39:** Analyze NVIDIA's Rubin whitepapers, specifically extreme codesign at the rack scale [6].
+- [ ] **Week 40:** Research Co-Packaged Optics (CPO) and light-in/light-out systems replacing copper [62].
 
 #### Month 11: Interview Conditioning (Coding & Algorithms)
-*   **Week 41:** Begin intensive LeetCode practice (Arrays, Strings, Hash Maps) [73]. Solve 2-3 Mediums daily.
-*   **Week 42:** Practice DFS, BFS, and Linked List manipulations [74]. Achieve a 20-minute solve rate.
-*   **Week 43:** Review memory management, virtual memory, paging, and kernel vs. user space [87].
-*   **Week 44:** Practice writing thread-safe code, explaining deadlock, race conditions, and locking mechanisms [73].
+- [ ] **Week 41:** Begin intensive LeetCode practice (Arrays, Strings, Hash Maps) [73]. Solve 2-3 Mediums daily.
+- [ ] **Week 42:** Practice DFS, BFS, and Linked List manipulations [74]. Achieve a 20-minute solve rate.
+- [ ] **Week 43:** Review memory management, virtual memory, paging, and kernel vs. user space [87].
+- [ ] **Week 44:** Practice writing thread-safe code, explaining deadlock, race conditions, and locking mechanisms [73].
 
 #### Month 12: Interview Conditioning (Hardware & Final Prep)
-*   **Week 45:** Practice whiteboard RTL coding (FSMs, Arbiters, FIFOs) under a 15-minute time constraint [29].
-*   **Week 46:** Review STA, timing closure math, antenna effects, electromigration, and IR drop [29].
-*   **Week 47:** Practice high-level architecture questions (e.g., "Design a memory allocator") [74].
-*   **Week 48:** Tailor your resume emphasizing RTL Design, SystemVerilog, OpenLane, Physical Design, STA, and C++ Modeling. [9, 78]
+- [ ] **Week 45:** Practice whiteboard RTL coding (FSMs, Arbiters, FIFOs) under a 15-minute time constraint [29].
+- [ ] **Week 46:** Review STA, timing closure math, antenna effects, electromigration, and IR drop [29].
+- [ ] **Week 47:** Practice high-level architecture questions (e.g., "Design a memory allocator") [74].
+- [ ] **Week 48:** Tailor your resume emphasizing RTL Design, SystemVerilog, OpenLane, Physical Design, STA, and C++ Modeling. [9, 78]
 
 [Back to Table of Contents](#table-of-contents)
 
