@@ -1,5 +1,6 @@
 `include "sys_defs.svh"
 `include "stage_if.sv"
+`include "stage_id.sv"
 
 // ============================================================================
 // Top-Level CPU Module
@@ -19,9 +20,11 @@ module cpu(
     /* verilator lint_off UNUSEDSIGNAL */
     logic [31:0] if_pc;
     logic [31:0] if_instr;
+    logic [31:0] id_pc;
+    logic [21:0] id_instr;
     /* verilator lint_on UNUSEDSIGNAL */
 
-    // Instantiate the Fetch Stage
+    // Fetch Stage
     stage_if stage_if_inst (
         .clk        (clk),
         .rst_n      (rst_n),
@@ -31,9 +34,15 @@ module cpu(
         .if_instr   (if_instr)       // Instruction passed down the pipeline
     );
 
-    // Next step: Instantiate Decode Stage here...
-    // decode_stage ID_STAGE ( ... );
-
+    // Decode Stage
+    stage_id stage_id_inst (
+      .clk        (clk),
+      .rst_n      (rst_n),
+      .if_pc      (if_pc),
+      .if_instr   (if_instr),
+      .id_pc      (id_pc),
+      .id_instr   (id_instr)
+    );
 
 
 endmodule
