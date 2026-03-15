@@ -29,19 +29,27 @@ int main(int argc, char **argv) {
     Vcpu* top = new Vcpu;
 
     // --- Load Binary Program into C++ Memory ---
-    std::vector<uint8_t> memory;
+    // We allocate 16 MB of memory to simulate a real RAM space.
+    // This allows the stack pointer (which often starts at 0 and decrements)
+    // to wrap around and safely access the top of memory.
+    std::vector<uint8_t> memory(16 * 1024 * 1024, 0); // 16 MB
+    uint32_t mem_mask = memory.size() - 1;
+
     const char* prog_name = Verilated::commandArgsPlusMatch("prog=");
     if (prog_name && prog_name[0]) {
         // Extract the actual program name (skip "+prog=")
         std::string filename = std::string("programs/") + (prog_name + 6) + ".bin";
-        std::ifstream file(filename, std::ios::binary);
-        if (!file) {
+        std::ifstream file(filename, std::ios::binary | std::ios::ate);
+        if (file) {
+            std::streamsize size = file.tellg();
+            file.seekg(0, std::ios::beg);
+            if (size > memory.size()) size = memory.size();
+            file.read(reinterpret_cast<char*>(memory.data()), size);
+            std::cout << "Loaded " << size << " bytes from " << filename << std::endl;
+        } else {
             std::cerr << "Failed to open " << filename << std::endl;
             return 1;
         }
-        // Read entire binary file into memory vector
-        memory.assign(std::istreambuf_iterator<char>(file), std::istreambuf_iterator<char>());
-        std::cout << "Loaded " << memory.size() << " bytes from " << filename << std::endl;
     } else {
         std::cout << "No program specified. Running with empty memory." << std::endl;
     }
@@ -67,29 +75,59 @@ int main(int argc, char **argv) {
             top->rst_n = 1;
         }
 
+        bool clk_prev = top->clk;
+
         // Toggle the clock every HALF_PERIOD_STEPS
         if ((main_time % HALF_PERIOD_STEPS) == 0) {
             top->clk = !top->clk;
         }
 
+        bool falling_edge = (clk_prev && !top->clk);
+
         // 1. Evaluate to update PC (if clock edge occurred)
         top->eval();
 
         // 2. Fetch instruction from C++ memory based on current_pc
-        uint32_t pc = top->current_pc;
-        uint32_t instr = 0;
-        
-        // Ensure we don't read past the end of our loaded binary
-        if (pc + 3 < memory.size()) {
-            // Read 4 bytes (little-endian) to form the 32-bit instruction
-            instr = memory[pc] | (memory[pc+1] << 8) | (memory[pc+2] << 16) | (memory[pc+3] << 24);
-        }
+        uint32_t pc = top->current_pc & mem_mask;
+        uint32_t instr = memory[pc] | (memory[pc+1] << 8) | (memory[pc+2] << 16) | (memory[pc+3] << 24);
         
         // Drive the instruction into the CPU
         top->fetched_instr = instr;
 
-        // 3. Evaluate again to propagate fetched_instr through combinational logic
+        // 3. Data Memory Read (Combinational)
+        uint32_t dmem_addr = top->dmem_addr & mem_mask;
+        uint32_t rdata = 0;
+        if (top->dmem_read) {
+            if (top->dmem_size == 0) { // BYTE
+                rdata = memory[dmem_addr];
+            } else if (top->dmem_size == 1) { // HALF
+                rdata = memory[dmem_addr] | (memory[dmem_addr+1] << 8);
+            } else { // WORD
+                rdata = memory[dmem_addr] | (memory[dmem_addr+1] << 8) | 
+                        (memory[dmem_addr+2] << 16) | (memory[dmem_addr+3] << 24);
+            }
+        }
+        top->dmem_rdata = rdata;
+
+        // 4. Evaluate again to propagate fetched_instr and dmem_rdata through combinational logic
         top->eval();
+
+        // 5. Data Memory Write (Synchronous, done safely on the falling edge)
+        if (falling_edge && top->dmem_write) {
+            uint32_t addr = top->dmem_addr & mem_mask;
+            uint32_t wdata = top->dmem_wdata;
+            if (top->dmem_size == 0) { // BYTE
+                memory[addr] = wdata & 0xFF;
+            } else if (top->dmem_size == 1) { // HALF
+                memory[addr] = wdata & 0xFF;
+                memory[addr+1] = (wdata >> 8) & 0xFF;
+            } else { // WORD
+                memory[addr] = wdata & 0xFF;
+                memory[addr+1] = (wdata >> 8) & 0xFF;
+                memory[addr+2] = (wdata >> 16) & 0xFF;
+                memory[addr+3] = (wdata >> 24) & 0xFF;
+            }
+        }
 
 #ifdef TRACE
         // Dump the waveform data at the CURRENT simulation time (in 100ps steps)

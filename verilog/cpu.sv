@@ -1,6 +1,8 @@
 `include "sys_defs.svh"
 `include "stage_if.sv"
 `include "stage_id.sv"
+`include "stage_ex.sv"
+`include "stage_mem.sv"
 
 // ============================================================================
 // Top-Level CPU Module
@@ -9,20 +11,30 @@ module cpu(
     input  logic clk,
     input  logic rst_n,
     
-    // Memory Interface (driven by C++ testbench)
+    // Instruction Memory Interface (driven by C++ testbench)
     output logic [31:0] current_pc,
     /* verilator lint_off UNUSEDSIGNAL */
-    input  logic [31:0] fetched_instr
+    input  logic [31:0] fetched_instr,
     /* verilator lint_on UNUSEDSIGNAL */
+
+    // Data Memory Interface (driven by C++ testbench)
+    output logic        dmem_read,
+    output logic        dmem_write,
+    output logic [31:0] dmem_addr,
+    output logic [31:0] dmem_wdata,
+    output MEM_SIZE     dmem_size,
+    input  logic [31:0] dmem_rdata
 );
 
     // Internal signals between stages
     /* verilator lint_off UNUSEDSIGNAL */
     IF_ID_PACKET if_packet, if_id_reg;
     ID_EX_PACKET id_packet, id_ex_reg;
+    EX_MEM_PACKET ex_packet, ex_mem_reg;
+    MEM_WB_PACKET mem_packet, mem_wb_reg;
     /* verilator lint_on UNUSEDSIGNAL */
 
-    // Fetch Stage
+    // ------------------Fetch Stage------------------
     stage_if stage_if_inst (
       .clk        (clk),
       .rst_n      (rst_n),
@@ -45,7 +57,7 @@ module cpu(
       end
     end
 
-    // Decode Stage
+    // ------------------Decode Stage------------------
     stage_id stage_id_inst (
       .clk        (clk),
       .rst_n      (rst_n),
@@ -84,5 +96,65 @@ module cpu(
       end
     end
 
+    // ------------------Execute Stage------------------
+    stage_ex stage_ex_inst (
+      .id_ex_reg(id_ex_reg),
+
+      .ex_packet(ex_packet)
+    );
+
+    // ex/mem reg
+    always_ff @(posedge clk) begin
+      if (!rst_n) begin
+        ex_mem_reg <= '{
+          32'b0, // alu result
+          32'b0, // NPC
+          `FALSE, // take_branch
+          32'b0, //rs2_value;
+          1'b0, // rd_mem;
+          1'b0, // wr_mem;
+          `ZERO_REG, // dest_reg_idx;
+          1'b0, // halt;
+          1'b0, // illegal;
+          1'b0, // csr_op;
+          1'b0, // rd_unsigned; // Whether our load data is signed or unsigned
+          BYTE, // mem_size;
+          1'b0 // valid;
+        };
+      end else begin
+        ex_mem_reg <= ex_packet;
+      end
+    end
+
+    // ------------------Memory Stage------------------
+    stage_mem stage_mem_inst (
+      .ex_mem_reg(ex_mem_reg),
+      
+      .dmem_read(dmem_read),
+      .dmem_write(dmem_write),
+      .dmem_addr(dmem_addr),
+      .dmem_wdata(dmem_wdata),
+      .dmem_size(dmem_size),
+      .dmem_rdata(dmem_rdata),
+      
+      .mem_packet(mem_packet)
+    );
+
+    // mem/wb reg
+    always_ff @(posedge clk) begin
+      if (!rst_n) begin
+        mem_wb_reg <= '{
+          32'b0, // result
+          32'b0, // NPC
+          `ZERO_REG, // dest_reg_idx
+          `FALSE, // take_branch
+          1'b0, // halt
+          1'b0, // illegal
+          1'b0  // valid
+        };
+      end else begin
+        mem_wb_reg <= mem_packet;
+      end
+    end
 
 endmodule

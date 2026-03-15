@@ -42,7 +42,7 @@ obj_dir/Vcpu:
 
 # Build + VCD tracing
 obj_dir/Vcpu_trace:
-	verilator --cc --exe --build -j $(nproc) -Wall --trace -Wno-UNUSEDSIGNAL -Wno-TIMESCALEMOD -Iverilog -CFLAGS "-DTRACE" sim_main.cpp verilog/cpu.sv -o Vcpu_trace
+	verilator --cc --exe --build -j $(nproc) -Wall --trace --trace-structs -Wno-UNUSEDSIGNAL -Wno-TIMESCALEMOD -Iverilog -CFLAGS "-DTRACE" sim_main.cpp verilog/cpu.sv -o Vcpu_trace
 
 # Run normal simulation
 run: programs/$(PROG).bin programs/$(PROG).dump obj_dir/Vcpu
