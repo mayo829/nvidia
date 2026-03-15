@@ -1,2 +1,6 @@
 obj_dir
 .venv
+wave.vcd
+*.dump
+*.bin
+*.vcd
