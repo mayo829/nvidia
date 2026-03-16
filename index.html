@@ -32,6 +32,7 @@
     }
   </style>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="questions.js"></script>
 </head>
 <body>
   <div id="root"></div>
@@ -1472,6 +1473,580 @@
       );
     }
 
+    // ===================== ASSESSMENTS =====================
+    function buildQuestionPool() {
+      const pool = [];
+      for (const phase of PHASES) {
+        for (const month of phase.months) {
+          for (const week of month.weeks) {
+            if (week.assessment) {
+              for (const q of week.assessment) {
+                pool.push({ q: q.q, a: q.a, type: q.type || 'General', weekId: week.id, weekN: week.n });
+              }
+            }
+          }
+        }
+      }
+      if (typeof EXTRA_QUESTIONS !== 'undefined') {
+        pool.push(...EXTRA_QUESTIONS);
+      }
+      return pool;
+    }
+
+    const QUESTION_POOL = buildQuestionPool();
+    const CATEGORIES = [...new Set(QUESTION_POOL.map(q => q.type))].sort();
+
+    function shuffleArray(arr) {
+      const a = [...arr];
+      for (let i = a.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [a[i], a[j]] = [a[j], a[i]];
+      }
+      return a;
+    }
+
+    const CATEGORY_COLORS = {
+      Architecture: '#22d3ee',
+      RTL: '#a78bfa',
+      Physical: '#fb923c',
+      Verification: '#4ade80',
+      Software: '#f472b6',
+      General: '#facc15',
+      Interview: '#60a5fa',
+    };
+
+    function AssessmentLineChart({ history }) {
+      const chartRef = React.useRef(null);
+      const canvasRef = React.useRef(null);
+      const key = history.map(h => h.id).join(',');
+
+      React.useEffect(() => {
+        if (!canvasRef.current) return;
+        if (chartRef.current) { chartRef.current.destroy(); chartRef.current = null; }
+        const allCategories = [...new Set(history.flatMap(h => h.categories))].sort();
+        const datasets = allCategories.map(cat => {
+          const points = history
+            .filter(h => h.categoryScores && h.categoryScores[cat] != null)
+            .map(h => ({ x: new Date(h.completedAt).toLocaleDateString(), y: parseFloat(h.categoryScores[cat].toFixed(2)) }));
+          return {
+            label: cat,
+            data: points,
+            borderColor: CATEGORY_COLORS[cat] || '#94a3b8',
+            backgroundColor: (CATEGORY_COLORS[cat] || '#94a3b8') + '22',
+            borderWidth: 2,
+            pointRadius: 4,
+            tension: 0.3,
+          };
+        });
+        chartRef.current = new Chart(canvasRef.current, {
+          type: 'line',
+          data: { datasets },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+              x: {
+                type: 'category',
+                ticks: { color: '#71717a', font: { size: 10 } },
+                grid: { color: 'rgba(255,255,255,0.05)' },
+              },
+              y: {
+                min: 1,
+                max: 5,
+                ticks: { color: '#71717a', stepSize: 1, font: { size: 10 } },
+                grid: { color: 'rgba(255,255,255,0.05)' },
+              }
+            },
+            plugins: {
+              legend: { display: true, labels: { color: '#a1a1aa', font: { size: 10 }, boxWidth: 12 } },
+              tooltip: {
+                backgroundColor: '#18181b', borderColor: '#27272a', borderWidth: 1,
+                callbacks: { label: ctx => `${ctx.dataset.label}: ${Number(ctx.raw.y).toFixed(1)}/5` }
+              }
+            }
+          }
+        });
+        return () => { if (chartRef.current) { chartRef.current.destroy(); chartRef.current = null; } };
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+      }, [key]);
+
+      return <div className="w-full h-[240px] relative"><canvas ref={canvasRef}></canvas></div>;
+    }
+
+    function AssessmentDashboard({ history, onStart, onResume, activeSession }) {
+      const [expandedId, setExpandedId] = React.useState(null);
+
+      return (
+        <div className="fade-in space-y-6">
+          <div className="flex items-center justify-between flex-wrap gap-3">
+            <div>
+              <h2 className="text-2xl font-bold text-zinc-50">Assessments</h2>
+              <p className="text-zinc-500 text-sm mt-0.5">Track your interview readiness by category.</p>
+            </div>
+            <div className="flex items-center gap-2">
+              {activeSession && (
+                <button onClick={onResume} className="flex items-center gap-2 px-4 py-2 bg-amber-500/10 border border-amber-500/30 text-amber-400 rounded-lg text-sm font-medium hover:bg-amber-500/20 transition-colors">
+                  <span>Resume Assessment</span>
+                  <span>→</span>
+                </button>
+              )}
+              <button onClick={onStart} className="flex items-center gap-2 px-4 py-2 bg-cyan-400/10 border border-cyan-400/30 text-cyan-400 rounded-lg text-sm font-medium hover:bg-cyan-400/20 transition-colors">
+                <span>New Assessment</span>
+                <span className="text-base leading-none">+</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Progression Chart */}
+          <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-5">
+            <h3 className="text-sm font-semibold text-zinc-300 mb-4">Score Progression by Category</h3>
+            {history.length === 0 ? (
+              <div className="h-[240px] flex items-center justify-center text-zinc-600 text-sm">
+                No assessments completed yet. Take one to begin tracking progress.
+              </div>
+            ) : (
+              <AssessmentLineChart history={history} />
+            )}
+          </div>
+
+          {/* Category Summary Cards */}
+          {history.length > 0 && (
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+              {CATEGORIES.map(cat => {
+                const catHistory = history.filter(h => h.categoryScores && h.categoryScores[cat] != null);
+                if (catHistory.length === 0) return null;
+                const latest = catHistory[catHistory.length - 1].categoryScores[cat];
+                const color = CATEGORY_COLORS[cat] || '#94a3b8';
+                return (
+                  <div key={cat} className="bg-zinc-900/50 border border-zinc-800 rounded-lg p-3">
+                    <div className="text-[9px] font-bold tracking-widest uppercase mb-1" style={{ color }}>{cat}</div>
+                    <div className="text-xl font-bold text-zinc-100">{latest.toFixed(1)}<span className="text-xs text-zinc-600">/5</span></div>
+                    <div className="text-[10px] text-zinc-600 mt-0.5">{catHistory.length} session{catHistory.length !== 1 ? 's' : ''}</div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* History List */}
+          <div>
+            <h3 className="text-sm font-semibold text-zinc-300 mb-3">Assessment History</h3>
+            {history.length === 0 ? (
+              <div className="text-zinc-600 text-sm py-8 text-center border border-zinc-800/50 rounded-lg">No completed assessments yet.</div>
+            ) : (
+              <div className="space-y-2">
+                {[...history].reverse().map((session) => {
+                  const isExpanded = expandedId === session.id;
+                  return (
+                    <div key={session.id} className="bg-zinc-900/30 border border-zinc-800 rounded-lg overflow-hidden">
+                      <button
+                        className="w-full p-4 text-left hover:bg-zinc-900/50 transition-colors"
+                        onClick={() => setExpandedId(isExpanded ? null : session.id)}
+                      >
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap mb-1">
+                              {session.categories.map(cat => (
+                                <span key={cat} className="text-[9px] font-bold tracking-widest uppercase px-1.5 py-0.5 rounded border"
+                                  style={{ borderColor: (CATEGORY_COLORS[cat] || '#94a3b8') + '40', color: CATEGORY_COLORS[cat] || '#94a3b8', background: (CATEGORY_COLORS[cat] || '#94a3b8') + '15' }}>
+                                  {cat}
+                                </span>
+                              ))}
+                            </div>
+                            <p className="text-[10px] text-zinc-600">{new Date(session.completedAt).toLocaleString()} · {session.totalQuestions} questions</p>
+                          </div>
+                          <div className="text-right flex-shrink-0 ml-4 flex items-center gap-3">
+                            <div>
+                              <div className="text-lg font-bold text-zinc-100">{session.avgScore.toFixed(1)}<span className="text-xs text-zinc-600">/5</span></div>
+                              <div className="text-[10px] text-zinc-600">avg score</div>
+                            </div>
+                            <span className={`text-zinc-600 text-[10px] transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`}>▾</span>
+                          </div>
+                        </div>
+                      </button>
+                      {isExpanded && (
+                        <div className="border-t border-zinc-800/60 px-4 pb-4 pt-3 space-y-3">
+                          <div className="flex flex-wrap gap-3 mb-2">
+                            {Object.entries(session.categoryScores || {}).map(([cat, score]) => (
+                              <div key={cat} className="flex items-center gap-1.5">
+                                <span className="text-[9px] font-bold tracking-widest uppercase" style={{ color: CATEGORY_COLORS[cat] || '#94a3b8' }}>{cat}</span>
+                                <span className="text-xs font-bold text-zinc-300">{score.toFixed(1)}/5</span>
+                              </div>
+                            ))}
+                          </div>
+                          {session.questions.map((q, idx) => (
+                            <div key={idx} className="bg-zinc-900/50 border border-zinc-800/50 rounded-lg p-3">
+                              <div className="flex items-start justify-between gap-3 mb-2">
+                                <span className="text-[9px] font-bold tracking-widest uppercase px-1.5 py-0.5 rounded border flex-shrink-0"
+                                  style={{ borderColor: (CATEGORY_COLORS[q.type] || '#94a3b8') + '40', color: CATEGORY_COLORS[q.type] || '#94a3b8' }}>
+                                  {q.type}
+                                </span>
+                                {q.score != null && (
+                                  <span className="text-xs font-bold flex-shrink-0" style={{ color: q.score <= 2 ? '#f87171' : q.score === 3 ? '#facc15' : '#4ade80' }}>
+                                    {q.score}/5
+                                  </span>
+                                )}
+                              </div>
+                              <p className="text-xs font-medium text-zinc-300 mb-2">{q.q}</p>
+                              {q.userAnswer && (
+                                <div className="mb-2">
+                                  <div className="text-[9px] text-zinc-600 uppercase tracking-widest mb-1">Your Answer</div>
+                                  <p className="text-[11px] text-zinc-500 leading-relaxed">{q.userAnswer}</p>
+                                </div>
+                              )}
+                              <div>
+                                <div className="text-[9px] text-zinc-600 uppercase tracking-widest mb-1">Model Answer</div>
+                                <p className="text-[11px] text-zinc-500 leading-relaxed">{q.a}</p>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+      );
+    }
+
+    function AssessmentSetup({ onBegin, onCancel }) {
+      const [selectedCats, setSelectedCats] = React.useState([]);
+      const [questionCount, setQuestionCount] = React.useState(10);
+
+      const toggleCat = (cat) => {
+        setSelectedCats(prev => prev.includes(cat) ? prev.filter(c => c !== cat) : [...prev, cat]);
+      };
+
+      const available = selectedCats.length > 0
+        ? QUESTION_POOL.filter(q => selectedCats.includes(q.type)).length
+        : 0;
+
+      const canStart = selectedCats.length > 0 && questionCount > 0 && questionCount <= available;
+
+      const countOptions = [5, 10, 15, 20].filter(n => n <= available);
+      const allOption = available > 20 ? available : null;
+
+      React.useEffect(() => {
+        if (available > 0 && questionCount > available) setQuestionCount(Math.min(10, available));
+      }, [available]);
+
+      return (
+        <div className="fade-in max-w-2xl">
+          <div className="flex items-center gap-3 mb-6">
+            <button onClick={onCancel} className="text-zinc-500 hover:text-zinc-300 text-sm transition-colors">← Back</button>
+            <div>
+              <h2 className="text-2xl font-bold text-zinc-50">New Assessment</h2>
+              <p className="text-zinc-500 text-sm mt-0.5">Select categories and question count.</p>
+            </div>
+          </div>
+
+          <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-5 mb-5">
+            <h3 className="text-sm font-semibold text-zinc-300 mb-3">Select Categories</h3>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+              {CATEGORIES.map(cat => {
+                const count = QUESTION_POOL.filter(q => q.type === cat).length;
+                const selected = selectedCats.includes(cat);
+                const color = CATEGORY_COLORS[cat] || '#94a3b8';
+                return (
+                  <button
+                    key={cat}
+                    onClick={() => toggleCat(cat)}
+                    className="flex items-center gap-2.5 p-3 rounded-lg border text-left transition-all"
+                    style={selected
+                      ? { color, borderColor: color + '60', background: color + '15' }
+                      : { borderColor: '#3f3f46', background: 'rgba(24,24,27,0.5)', color: '#a1a1aa' }}
+                  >
+                    <div className="w-4 h-4 rounded border flex items-center justify-center flex-shrink-0 transition-all"
+                      style={selected ? { borderColor: color, background: color } : { borderColor: '#52525b' }}>
+                      {selected && (
+                        <svg className="w-2.5 h-2.5 text-black" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="3.5">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"/>
+                        </svg>
+                      )}
+                    </div>
+                    <div>
+                      <div className="text-xs font-semibold" style={selected ? { color } : { color: '#d4d4d8' }}>{cat}</div>
+                      <div className="text-[10px] text-zinc-600">{count} questions</div>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {selectedCats.length > 0 && (
+            <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-5 mb-5 fade-in">
+              <h3 className="text-sm font-semibold text-zinc-300 mb-1">Number of Questions</h3>
+              <p className="text-[11px] text-zinc-600 mb-3">{available} questions available from selected categories.</p>
+              <div className="flex items-center gap-2 flex-wrap">
+                {countOptions.map(n => (
+                  <button key={n} onClick={() => setQuestionCount(n)}
+                    className="px-4 py-2 rounded-lg border text-sm font-medium transition-all"
+                    style={questionCount === n
+                      ? { borderColor: '#22d3ee99', background: '#22d3ee15', color: '#22d3ee' }
+                      : { borderColor: '#3f3f46', color: '#71717a' }}>
+                    {n}
+                  </button>
+                ))}
+                {allOption && (
+                  <button onClick={() => setQuestionCount(allOption)}
+                    className="px-4 py-2 rounded-lg border text-sm font-medium transition-all"
+                    style={questionCount === allOption
+                      ? { borderColor: '#22d3ee99', background: '#22d3ee15', color: '#22d3ee' }
+                      : { borderColor: '#3f3f46', color: '#71717a' }}>
+                    All ({allOption})
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => canStart && onBegin(selectedCats, questionCount)}
+              disabled={!canStart}
+              className="px-6 py-2.5 rounded-lg font-semibold text-sm transition-all"
+              style={canStart ? { background: '#22d3ee', color: '#000' } : { background: '#27272a', color: '#52525b', cursor: 'not-allowed' }}
+            >
+              Start Assessment
+            </button>
+            <button onClick={onCancel} className="px-4 py-2.5 text-zinc-500 hover:text-zinc-300 text-sm transition-colors">Cancel</button>
+          </div>
+        </div>
+      );
+    }
+
+    function ActiveAssessment({ session, onSaveProgress, onComplete, onAbandon }) {
+      const [currentIdx, setCurrentIdx] = React.useState(session.currentIndex || 0);
+      const [userAnswer, setUserAnswer] = React.useState('');
+      const [revealed, setRevealed] = React.useState(false);
+      const [questions, setQuestions] = React.useState(session.questions);
+
+      React.useEffect(() => {
+        setUserAnswer(questions[currentIdx]?.userAnswer || '');
+        setRevealed(false);
+      }, [currentIdx]);
+
+      const currentQ = questions[currentIdx];
+      const totalQ = questions.length;
+      const isLast = currentIdx === totalQ - 1;
+      const answeredCount = questions.filter(q => q.score != null).length;
+      const color = CATEGORY_COLORS[currentQ.type] || '#94a3b8';
+
+      const handleReveal = () => {
+        const updated = questions.map((q, i) => i === currentIdx ? { ...q, userAnswer } : q);
+        setQuestions(updated);
+        setRevealed(true);
+        onSaveProgress({ ...session, questions: updated, currentIndex: currentIdx });
+      };
+
+      const handleGrade = (score) => {
+        const updated = questions.map((q, i) => i === currentIdx ? { ...q, userAnswer, score } : q);
+        setQuestions(updated);
+        onSaveProgress({ ...session, questions: updated, currentIndex: currentIdx });
+        if (isLast) {
+          onComplete(updated);
+        } else {
+          const next = currentIdx + 1;
+          setCurrentIdx(next);
+          onSaveProgress({ ...session, questions: updated, currentIndex: next });
+        }
+      };
+
+      return (
+        <div className="fade-in max-w-3xl">
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h2 className="text-2xl font-bold text-zinc-50">Assessment</h2>
+              <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                {session.categories.map(cat => (
+                  <span key={cat} className="text-[9px] font-bold tracking-widest uppercase" style={{ color: CATEGORY_COLORS[cat] || '#94a3b8' }}>{cat}</span>
+                ))}
+              </div>
+            </div>
+            <button
+              onClick={onAbandon}
+              className="text-zinc-600 hover:text-red-400 text-xs transition-colors px-3 py-1.5 border border-zinc-800 hover:border-red-900/50 rounded-lg"
+            >
+              Abandon
+            </button>
+          </div>
+
+          {/* Progress Bar */}
+          <div className="mb-6">
+            <div className="flex items-center justify-between text-xs text-zinc-600 mb-1.5">
+              <span>Question {currentIdx + 1} of {totalQ}</span>
+              <span>{answeredCount} graded</span>
+            </div>
+            <div className="w-full bg-zinc-800 rounded-full h-1.5">
+              <div className="h-full rounded-full transition-all duration-500 bg-cyan-400" style={{ width: `${(currentIdx / totalQ) * 100}%` }} />
+            </div>
+          </div>
+
+          {/* Question Card */}
+          <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl overflow-hidden mb-4">
+            <div className="p-5 border-b border-zinc-800">
+              <div className="flex items-center gap-2 mb-3">
+                <span className="text-[9px] font-bold tracking-widest uppercase px-2 py-0.5 rounded border"
+                  style={{ color, borderColor: color + '40', background: color + '15' }}>
+                  {currentQ.type}
+                </span>
+                <span className="text-[10px] text-zinc-600">Week {currentQ.weekN}</span>
+              </div>
+              <p className="text-zinc-100 font-medium text-sm leading-relaxed">{currentQ.q}</p>
+            </div>
+
+            <div className="p-5">
+              <label className="block text-[10px] font-bold tracking-widest uppercase text-zinc-600 mb-2">Your Answer</label>
+              <textarea
+                value={userAnswer}
+                onChange={e => setUserAnswer(e.target.value)}
+                disabled={revealed}
+                rows={5}
+                placeholder="Type your answer here before revealing..."
+                className="w-full bg-zinc-900 border border-zinc-700 rounded-lg p-3 text-sm text-zinc-200 resize-y focus:outline-none focus:border-zinc-500 placeholder-zinc-700 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
+              />
+            </div>
+
+            {!revealed && (
+              <div className="px-5 pb-5">
+                <button
+                  onClick={handleReveal}
+                  className="px-5 py-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded-lg text-sm font-medium transition-colors border border-zinc-700"
+                >
+                  Reveal Answer
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Revealed Answer & Grading */}
+          {revealed && (
+            <div className="fade-in bg-zinc-900/50 border border-zinc-800 rounded-xl p-5 mb-4">
+              <div className="text-[10px] font-bold tracking-widest uppercase text-zinc-600 mb-3">Model Answer</div>
+              <p className="text-zinc-300 text-sm leading-relaxed">{currentQ.a}</p>
+
+              <div className="mt-5 border-t border-zinc-800 pt-5">
+                <div className="text-[10px] font-bold tracking-widest uppercase text-zinc-600 mb-3">
+                  Grade Your Response &nbsp;·&nbsp; 1 = Poor &nbsp; 5 = Perfect
+                </div>
+                <div className="flex items-center gap-2">
+                  {[1, 2, 3, 4, 5].map(score => {
+                    const sc = score <= 2 ? '#f87171' : score === 3 ? '#facc15' : '#4ade80';
+                    return (
+                      <button
+                        key={score}
+                        onClick={() => handleGrade(score)}
+                        className="flex-1 py-3 rounded-lg border text-sm font-bold transition-all hover:scale-105 active:scale-95"
+                        style={{ borderColor: sc + '60', color: sc, background: sc + '15' }}
+                      >
+                        {score}
+                      </button>
+                    );
+                  })}
+                </div>
+                <div className="flex justify-between text-[10px] text-zinc-700 mt-1.5 px-1">
+                  <span>Poor</span>
+                  <span>Average</span>
+                  <span>Perfect</span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Completion teaser */}
+          {isLast && !revealed && (
+            <div className="text-[11px] text-zinc-600 text-center py-2">This is the last question. Reveal and grade to complete the assessment.</div>
+          )}
+        </div>
+      );
+    }
+
+    function AssessmentsTab() {
+      const [view, setView] = React.useState('dashboard');
+      const [history, setHistory] = React.useState(() => load('assessment_history', []));
+      const [activeSession, setActiveSession] = React.useState(() => load('active_assessment', null));
+
+      const handleStart = () => setView('setup');
+      const handleResume = () => setView('active');
+      const handleCancel = () => setView('dashboard');
+
+      const handleBegin = (categories, count) => {
+        const filtered = shuffleArray(QUESTION_POOL.filter(q => categories.includes(q.type))).slice(0, count);
+        const session = {
+          id: Date.now(),
+          categories,
+          questions: filtered.map(q => ({ ...q, userAnswer: '', score: null })),
+          currentIndex: 0,
+          startedAt: new Date().toISOString(),
+        };
+        setActiveSession(session);
+        save('active_assessment', session);
+        setView('active');
+      };
+
+      const handleSaveProgress = (session) => {
+        setActiveSession(session);
+        save('active_assessment', session);
+      };
+
+      const handleComplete = (answeredQuestions) => {
+        const categoryScores = {};
+        const categoryCounts = {};
+        for (const q of answeredQuestions) {
+          if (q.score != null) {
+            if (!categoryScores[q.type]) { categoryScores[q.type] = 0; categoryCounts[q.type] = 0; }
+            categoryScores[q.type] += q.score;
+            categoryCounts[q.type]++;
+          }
+        }
+        const avgCategoryScores = {};
+        for (const cat of Object.keys(categoryScores)) {
+          avgCategoryScores[cat] = categoryScores[cat] / categoryCounts[cat];
+        }
+        const allScores = answeredQuestions.filter(q => q.score != null).map(q => q.score);
+        const avgScore = allScores.length ? allScores.reduce((a, b) => a + b, 0) / allScores.length : 0;
+
+        const completed = {
+          id: activeSession.id,
+          categories: activeSession.categories,
+          completedAt: new Date().toISOString(),
+          totalQuestions: answeredQuestions.length,
+          avgScore,
+          categoryScores: avgCategoryScores,
+          questions: answeredQuestions,
+        };
+
+        const newHistory = [...history, completed];
+        setHistory(newHistory);
+        save('assessment_history', newHistory);
+        setActiveSession(null);
+        save('active_assessment', null);
+        setView('dashboard');
+      };
+
+      const handleAbandon = () => {
+        if (!window.confirm('Abandon this assessment? All progress so far will be lost.')) return;
+        setActiveSession(null);
+        save('active_assessment', null);
+        setView('dashboard');
+      };
+
+      if (view === 'setup') return <AssessmentSetup onBegin={handleBegin} onCancel={handleCancel} />;
+      if (view === 'active' && activeSession) return (
+        <ActiveAssessment
+          session={activeSession}
+          onSaveProgress={handleSaveProgress}
+          onComplete={handleComplete}
+          onAbandon={handleAbandon}
+        />
+      );
+      return <AssessmentDashboard history={history} onStart={handleStart} onResume={handleResume} activeSession={activeSession} />;
+    }
+
     // ===================== SIDEBAR =====================
     const TOP_NAV = [
       { id: 'overview',    label: 'Overview',      icon: '◈' },
@@ -1659,6 +2234,18 @@
             )}
           </div>
 
+          {/* Assessments — direct link */}
+          <div className="border-t border-zinc-800/60 flex-shrink-0">
+            <button
+              onClick={() => setTab('assessments')}
+              className={`w-full flex items-center gap-3 px-4 py-2.5 text-left hover:bg-zinc-900/40 transition-colors ${tab === 'assessments' ? 'text-zinc-100 bg-zinc-800/70' : 'text-zinc-500 hover:text-zinc-300'}`}
+            >
+              <span className="text-sm leading-none flex-shrink-0">◉</span>
+              <span className="text-sm font-medium flex-1 truncate">Assessments</span>
+              {tab === 'assessments' && <div className="w-1 h-4 bg-cyan-400 rounded-full flex-shrink-0" />}
+            </button>
+          </div>
+
           {/* Reference section — collapsible */}
           <div className="border-t border-zinc-800/60 flex-shrink-0">
             <button
@@ -1754,6 +2341,7 @@
               {tab === 'projects'    && <ProjectsOverviewTab />}
               {tab === 'interview'   && <InterviewTab />}
               {tab === 'citations'   && <CitationsTab />}
+              {tab === 'assessments' && <AssessmentsTab />}
               {activeProject && <ProjectView project={activeProject} />}
               {activePhase && activeMonth && (
                 <MonthView phase={activePhase} month={activeMonth} done={done} onToggle={toggleWeek} />
