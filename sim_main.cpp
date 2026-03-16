@@ -63,7 +63,7 @@ int main(int argc, char **argv) {
 
     // Initialize inputs
     top->clk = 0;
-    top->rst_n = 0; // Assert reset initially
+    top->rst = 1; // Assert reset initially
 
     // Run simulation for 50 full clock cycles
     int max_sim_time = 50 * CLOCK_PERIOD_NS * TIME_STEPS_PER_NS;
@@ -72,7 +72,7 @@ int main(int argc, char **argv) {
         
         // Release reset after 2 full clock cycles
         if (main_time > 2 * CLOCK_PERIOD_NS * TIME_STEPS_PER_NS) {
-            top->rst_n = 1;
+            top->rst = 0;
         }
 
         bool clk_prev = top->clk;

@@ -8,7 +8,7 @@
 
 module stage_id (
   input logic clk,
-  input logic rst_n,
+  input logic rst,
   input IF_ID_PACKET if_id_reg,
   input              wb_regfile_en,   // Reg write enable from WB Stage
   input REG_IDX      wb_regfile_idx,  // Reg write index from WB Stage

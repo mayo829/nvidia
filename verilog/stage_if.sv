@@ -5,7 +5,10 @@
 // ============================================================================
 module stage_if (
     input  logic        clk,
-    input  logic        rst_n,
+    input  logic        rst,
+    input  logic        if_valid,
+    input  logic        take_branch,
+    input  ADDR         branch_target,
     
     // Interface to Instruction Memory (simulated in testbench)
     output ADDR pc_out,
@@ -19,10 +22,12 @@ module stage_if (
 
     // PC Register
     always_ff @(posedge clk) begin
-        if (!rst_n) begin
-            pc_reg <= 32'h0;
+        if (rst) begin
+          pc_reg <= 32'h0;
+        end else if (take_branch) begin
+          pc_reg <= branch_target;
         end else begin
-            pc_reg <= pc_reg + 4; // Advance PC by 4 bytes (1 word)
+          pc_reg <= pc_reg + 4; // Advance PC by 4 bytes (1 word)
         end
     end
 
@@ -33,6 +38,6 @@ module stage_if (
     assign if_packet.PC = pc_reg;
     assign if_packet.NPC = pc_reg + 4;
     assign if_packet.inst = instr_in;
-    assign if_packet.valid = `TRUE;
+    assign if_packet.valid = if_valid;
 
 endmodule

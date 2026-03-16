@@ -3,13 +3,14 @@
 `include "stage_id.sv"
 `include "stage_ex.sv"
 `include "stage_mem.sv"
+`include "stage_wb.sv"
 
 // ============================================================================
 // Top-Level CPU Module
 // ============================================================================
 module cpu(
     input  logic clk,
-    input  logic rst_n,
+    input  logic rst,
     
     // Instruction Memory Interface (driven by C++ testbench)
     output logic [31:0] current_pc,
@@ -32,12 +33,22 @@ module cpu(
     ID_EX_PACKET id_packet, id_ex_reg;
     EX_MEM_PACKET ex_packet, ex_mem_reg;
     MEM_WB_PACKET mem_packet, mem_wb_reg;
+    COMMIT_PACKET wb_packet;
+
+    logic if_valid, wb_valid;
     /* verilator lint_on UNUSEDSIGNAL */
+
+    // if_valid should be combinational. If it's in an always_ff, it will be delayed by one clock cycle.
+    // We want the IF stage to be valid immediately in the same cycle that reset is deasserted.
+    assign if_valid = ~rst || wb_valid;
 
     // ------------------Fetch Stage------------------
     stage_if stage_if_inst (
       .clk        (clk),
-      .rst_n      (rst_n),
+      .rst        (rst),
+      .if_valid   (if_valid),
+      .take_branch(ex_packet.take_branch),
+      .branch_target(ex_packet.alu_result),
       .pc_out     (current_pc),    // Send PC out to testbench memory
       .instr_in   (fetched_instr), // Receive instruction from testbench memory
       .if_packet  (if_packet)
@@ -45,32 +56,32 @@ module cpu(
 
     // IF/ID Reg
     always_ff @(posedge clk) begin
-      if (!rst_n) begin
-        if_id_reg <= if_packet;
-      end else begin
+      if (rst) begin
         if_id_reg <= '{
           `NOP, // instr
           32'h0, // PC
           32'h0, // NPC
           `FALSE // valid
         };
+      end else begin
+        if_id_reg <= if_packet;
       end
     end
 
     // ------------------Decode Stage------------------
     stage_id stage_id_inst (
       .clk        (clk),
-      .rst_n      (rst_n),
+      .rst      (rst),
       .if_id_reg  (if_id_reg),
-      .wb_regfile_en   (`TRUE),
-      .wb_regfile_idx  (`ZERO_REG),
-      .wb_regfile_data (32'b0),
+      .wb_regfile_en   (wb_packet.valid),
+      .wb_regfile_idx  (wb_packet.reg_idx),
+      .wb_regfile_data (wb_packet.data),
       .id_packet  (id_packet)
     );
 
     // IF/ID Reg
     always_ff @(posedge clk) begin
-      if (rst_n) begin
+      if (rst) begin
         id_ex_reg <= '{
           `NOP, // we can't simply assign 0 because NOP is non-zero
           32'b0, // PC
@@ -105,7 +116,7 @@ module cpu(
 
     // ex/mem reg
     always_ff @(posedge clk) begin
-      if (!rst_n) begin
+      if (rst) begin
         ex_mem_reg <= '{
           32'b0, // alu result
           32'b0, // NPC
@@ -142,7 +153,7 @@ module cpu(
 
     // mem/wb reg
     always_ff @(posedge clk) begin
-      if (!rst_n) begin
+      if (rst) begin
         mem_wb_reg <= '{
           32'b0, // result
           32'b0, // NPC
@@ -155,6 +166,20 @@ module cpu(
       end else begin
         mem_wb_reg <= mem_packet;
       end
+    end
+
+    // ------------------Writeback Stage------------------
+    stage_wb stage_wb_inst (
+      .mem_wb_reg(mem_wb_reg),
+
+      .wb_packet(wb_packet)
+    );
+
+    always_ff @(posedge clk) begin
+        if (rst) wb_valid <= `FALSE;
+        else begin
+          wb_valid <= mem_wb_reg.valid;
+        end
     end
 
 endmodule
